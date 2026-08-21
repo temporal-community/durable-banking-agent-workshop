@@ -134,6 +134,14 @@ const API_BASE = window.LEDGER_API_BASE || (() => {
   }
   return `${protocol}//${hostname.replace(/-\d+-/, "-8000-")}`;
 })();
+
+// The backend tab lives on a different Instruqt subdomain, so this is a cross-origin request.
+// Instruqt's proxy needs the participant's auth cookie to authorize that subdomain, and fetch
+// omits cookies on cross-origin requests unless told otherwise.
+function apiFetch(path, options) {
+  return fetch(`${API_BASE}${path}`, { credentials: "include", ...options });
+}
+
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 60000;
 
@@ -181,7 +189,7 @@ function renderIncidents() {
 }
 
 async function fetchAccount(id) {
-  const res = await fetch(`${API_BASE}/accounts/${id}`);
+  const res = await apiFetch(`/accounts/${id}`);
   if (!res.ok) throw new Error(`account ${id} lookup failed: ${res.status}`);
   return res.json();
 }
@@ -214,7 +222,7 @@ function sleep(ms) {
 async function pollTransfer(workflowId, incidentRecord) {
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const res = await fetch(`${API_BASE}/transfer/${workflowId}`);
+    const res = await apiFetch(`/transfer/${workflowId}`);
     if (!res.ok) throw new Error(`status poll failed: ${res.status}`);
     const data = await res.json();
 
@@ -254,7 +262,7 @@ form.addEventListener("submit", async (e) => {
   };
 
   try {
-    const startRes = await fetch(`${API_BASE}/transfer`, {
+    const startRes = await apiFetch(`/transfer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

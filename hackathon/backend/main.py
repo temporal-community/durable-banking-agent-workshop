@@ -13,7 +13,11 @@ from ledger import accounts, incidents, log_incident
 app = FastAPI(title="Ledger Bank - Hackathon Backend")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # A wildcard origin can't be combined with credentialed requests (the browser rejects it),
+    # and the frontend has to send its Instruqt auth cookie cross-origin to reach this tab's
+    # own subdomain. allow_origin_regex matches both local dev and every Instruqt sandbox host.
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.env\.play\.instruqt\.com",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
