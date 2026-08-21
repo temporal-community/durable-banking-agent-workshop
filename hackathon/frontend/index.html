@@ -122,7 +122,16 @@
   </div>
 
 <script>
-const API_BASE = window.LEDGER_API_BASE || "http://localhost:8000";
+// Instruqt exposes each port as its own hostname (<host>-<port>-<participant>.env.play.instruqt.com),
+// there is no shared "localhost" between tabs, so the backend's URL has to be derived from this
+// page's own hostname rather than hardcoded.
+const API_BASE = window.LEDGER_API_BASE || (() => {
+  const { protocol, hostname } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "http://localhost:8000";
+  }
+  return `${protocol}//${hostname.replace(/-\d+-/, "-8000-")}`;
+})();
 
 const SPOOF_LOCATIONS = ["New York", "London", "Tokyo", "Lagos", "Sydney"];
 const spoofSelect = document.getElementById("spoof");
