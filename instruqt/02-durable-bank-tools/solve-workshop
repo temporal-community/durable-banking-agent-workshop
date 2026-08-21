@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euxo pipefail
+source /root/.bashrc || true
+
+cp -rf /opt/workshop/modules/02-durable-bank-tools/solution/. /root/workshop/modules/02-durable-bank-tools/exercise/
+
+pkill -f "python -m worker" || true
+sleep 1
+
+cd /root/workshop/modules/02-durable-bank-tools/solution
+nohup uv run python -m worker > /tmp/solve-02-durable-bank-tools-worker.log 2>&1 &
+WORKER_PID=$!
+sleep 12
+
+timeout 120 uv run python -m start_workflow "What is the balance of account A?" || true
+
+kill "$WORKER_PID" 2>/dev/null || true
+exit 0

@@ -1,0 +1,7 @@
+{
+  "kill_all": false,
+  "services": {
+    "openai": true,
+    "geoip": true
+  }
+}

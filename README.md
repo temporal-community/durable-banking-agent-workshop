@@ -1,0 +1,53 @@
+# Durable Banking Agent Workshop
+
+A half-day path from a bare bank assistant to a fraud-detecting funds-transfer agent that survives
+a crash mid-transfer, built with the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)
+and [Temporal](https://temporal.io/) for durable execution.
+
+You are a fraud investigator at Ledger Bank. Two accounts, A and B, move money between each other
+while a fraudster keeps trying to drain them from spoofed locations around the world. Modules 1 and
+2 build up the agent. Module 3 hands you a working but fragile transfer service and asks you to make
+it durable without changing what it does.
+
+## Modules
+
+| Module | What's new | Read this first |
+|---|---|---|
+| [`modules/01-durable-bank-assistant`](modules/01-durable-bank-assistant/) | A bank assistant `Agent` inside a Temporal workflow. One LLM call, already durable, no tools yet. | [`modules/01-durable-bank-assistant/README.md`](modules/01-durable-bank-assistant/README.md) |
+| [`modules/02-durable-bank-tools`](modules/02-durable-bank-tools/) | A mock balance-lookup tool becomes a Temporal activity via `activity_as_tool`. | [`modules/02-durable-bank-tools/README.md`](modules/02-durable-bank-tools/README.md) |
+| [`hackathon/`](hackathon/) + [`instruqt/03-durable-banking-agent`](instruqt/03-durable-banking-agent/) | The open hackathon: temporalize a fragile fraud-checking transfer service without changing its product behavior. | [`instruqt/03-durable-banking-agent/assignment.md`](instruqt/03-durable-banking-agent/assignment.md) |
+
+`solution/` holds the fully temporalized reference for module 3.
+
+## How to work through the workshop
+
+1. Start a Temporal dev server once (`temporal server start-dev`). All modules connect to
+   `localhost:7233`.
+2. Set `OPENAI_API_KEY` in your shell (a fake value like `sk-test-not-real` is enough to exercise
+   every step up to the final model response).
+3. `cd modules/NN-.../exercise && uv sync` (or `solution/` to run the finished reference directly).
+4. Fill in the `TODO`s in `exercise/`.
+5. Run the worker in one terminal: `uv run python -m worker`.
+6. Run a workflow in another: `uv run python -m start_workflow "<your prompt>"`.
+
+Each module uses its own Temporal task queue, so workers can run side by side without interfering.
+
+## Prerequisites
+
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/): `brew install uv`
+- [Temporal CLI](https://docs.temporal.io/cli): `brew install temporal`
+- [Instruqt CLI](https://instruqt.com/): `brew install instruqt/tap/instruqt` (only needed for
+  building/publishing the track in `instruqt/`)
+- An OpenAI API key, set as `OPENAI_API_KEY`
+
+## Observing what Temporal gives you
+
+All modules are Temporal workflows. Watch them in the Temporal Web UI at `localhost:8233` while
+they run.
+
+## Building/publishing the Instruqt track
+
+See the root `justfile` (`just validate`, `just push`, etc.) and `instruqt/`. Don't push to a real
+Instruqt team or Docker registry without confirming the target first. Check
+`instruqt/track.yml` and `instruqt/docker/Dockerfile` for the current placeholders.

@@ -1,0 +1,13 @@
+version: "3"
+containers:
+- name: workshop
+  image: trainwithshubham/durable-banking-agent-workshop-sandbox:latest
+  shell: /bin/bash
+  memory: 4096
+  ports:
+  - 5000
+  - 8000
+  - 8080
+  - 8233
+secrets:
+- name: OPENAI_API_KEY

@@ -1,0 +1,52 @@
+slug: durable-banking-agent
+id: d05boou7k6pf
+title: Durable Banking Agent
+teaser: A fraudster is spoofing locations to drain two accounts. Catch it, then make
+  the fix survive a crash.
+description: |-
+  Ledger Bank's transfer service makes a real fraud call on every transfer: is this
+  the same person who transacted last, or did they just teleport across the planet?
+  The call is made by an OpenAI Agent reasoning over geolocation and account history,
+  not a hardcoded rule.
+
+  The bank's backend works, but it is fragile. A slow geo-IP lookup has no retry. A
+  crashed process mid-transfer leaves the ledger inconsistent. Nothing records what
+  happened.
+
+  You build the agent inside a Temporal workflow twice: once as a guided warm-up
+  (modules 1-2), then once for real, temporalizing Ledger Bank's transfer path
+  without changing what it does for a customer.
+icon: ""
+tags:
+- fintech
+- openai
+- ai-agents
+- python
+- temporal
+owner: temporal
+developers:
+- shubham.londhe@temporal.io
+maintenance: true
+skipping_enabled: true
+idle_timeout: 8100
+timelimit: 8100
+lab_config:
+  extend_ttl: 900
+  sidebar_enabled: true
+  feedback_recap_enabled: false
+  feedback_tab_enabled: false
+  loadingMessages:
+  - Wiring the vault door to a retry policy...
+  - Asking the fraudster for their frequent-flyer number...
+  - Reconstructing the ledger from event history, not from memory...
+  - Checking whether anyone can fly to Lagos in four minutes...
+  - Minting a worker that resumes instead of restarts...
+  - Teaching the agent that "declined" and "retry later" are different words...
+  theme:
+    name: modern-dark
+  override_challenge_layout: true
+  hideStopButton: false
+  default_layout: AssignmentLeft
+  default_layout_sidebar_size: 33
+checksum: "12044393654435690537"
+enhanced_loading: false

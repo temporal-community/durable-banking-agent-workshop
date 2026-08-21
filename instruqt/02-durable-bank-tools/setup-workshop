@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euxo pipefail
+source /root/.bashrc || true
+
+pkill -f "python -m worker" || true
+sleep 1
+
+echo "==> 02-durable-bank-tools ready."

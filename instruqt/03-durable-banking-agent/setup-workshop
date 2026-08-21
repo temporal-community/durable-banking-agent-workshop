@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euxo pipefail
+source /root/.bashrc || true
+
+pkill -f "uvicorn main:app" || true
+pkill -f "http.server 8080" || true
+sleep 1
+
+nohup python3 -m http.server 8080 --directory /root/workshop/hackathon/frontend \
+    > /tmp/hackathon-frontend.log 2>&1 &
+
+echo "==> 03-durable-banking-agent ready. Start your backend from the Backend terminal:"
+echo "    cd /root/workshop/hackathon/backend && uv run uvicorn main:app --reload"

@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euxo pipefail
+source /root/.bashrc || true
+
+pkill -f "uvicorn main:app" || true
+pkill -f "python -m worker" || true
+pkill -f "http.server 8080" || true
+sleep 1
+
+cd /root/workshop/solution/backend
+nohup uv run python -m worker > /tmp/solve-03-worker.log 2>&1 &
+sleep 5
+nohup uv run uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/solve-03-backend.log 2>&1 &
+
+nohup python3 -m http.server 8080 --directory /root/workshop/solution/frontend \
+    > /tmp/solve-03-frontend.log 2>&1 &
+
+echo "==> 03-durable-banking-agent solved: solution/backend + solution/frontend are running."
+exit 0

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Ledger Bank — Fraud Desk</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #171d2e;
+    --border: #2a3348;
+    --text: #e7ebf3;
+    --muted: #8a94ac;
+    --accent: #4f8cff;
+    --good: #35c46a;
+    --bad: #ef5a5a;
+    --warn: #e8b339;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .account-name { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .balance { font-size: 28px; font-weight: 600; margin: 4px 0; }
+  .account-meta { font-size: 12px; color: var(--muted); }
+  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  select, input, button {
+    background: #10162400;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  button {
+    background: var(--accent);
+    border: none;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  .verdict-accepted { color: var(--good); font-weight: 600; }
+  .verdict-declined-fraud { color: var(--bad); font-weight: 600; }
+  .verdict-errored { color: var(--warn); font-weight: 600; }
+  #status { margin: 10px 0; font-size: 13px; min-height: 18px; }
+  #status.error { color: var(--bad); }
+  #status.ok { color: var(--good); }
+</style>
+</head>
+<body>
+  <h1>Ledger Bank — Fraud Desk</h1>
+  <p class="subtitle">
+    Every transfer is screened live. Spoof a location below to see the fraud desk in action — no
+    retries, no recovery if anything mid-flight goes wrong. That's tomorrow's problem.
+  </p>
+
+  <div class="grid" id="accounts"></div>
+
+  <div class="panel" style="margin-bottom: 20px;">
+    <form id="transfer-form">
+      <div>
+        <label for="from">From</label>
+        <select id="from" name="from_account"><option value="A">A</option><option value="B">B</option></select>
+      </div>
+      <div>
+        <label for="to">To</label>
+        <select id="to" name="to_account"><option value="B">B</option><option value="A">A</option></select>
+      </div>
+      <div>
+        <label for="amount">Amount</label>
+        <input id="amount" name="amount" type="number" min="1" step="0.01" value="100" />
+      </div>
+      <div>
+        <label for="spoof">Request origin</label>
+        <select id="spoof" name="spoof_location">
+          <option value="">— use real location —</option>
+        </select>
+      </div>
+      <div>
+        <button type="submit" id="submit-btn">Send transfer</button>
+      </div>
+    </form>
+    <p class="hint">
+      Known fraudster hideouts: pick a far-flung city below and watch the fraud desk catch the
+      impossible-travel pattern.
+    </p>
+    <div id="status"></div>
+  </div>
+
+  <div class="panel">
+    <h2 style="font-size:14px; margin-top:0;">Incident log</h2>
+    <table>
+      <thead>
+        <tr><th>Time</th><th>From → To</th><th>Amount</th><th>Location</th><th>Verdict</th><th>Reason</th></tr>
+      </thead>
+      <tbody id="incidents-body"></tbody>
+    </table>
+  </div>
+
+<script>
+const API_BASE = window.LEDGER_API_BASE || "http://localhost:8000";
+
+const SPOOF_LOCATIONS = ["New York", "London", "Tokyo", "Lagos", "Sydney"];
+const spoofSelect = document.getElementById("spoof");
+for (const city of SPOOF_LOCATIONS) {
+  const opt = document.createElement("option");
+  opt.value = city;
+  opt.textContent = city;
+  spoofSelect.appendChild(opt);
+}
+
+const accountsEl = document.getElementById("accounts");
+const statusEl = document.getElementById("status");
+const incidentsBody = document.getElementById("incidents-body");
+const form = document.getElementById("transfer-form");
+const submitBtn = document.getElementById("submit-btn");
+
+function fmtMoney(n) {
+  return "$" + Number(n).toFixed(2);
+}
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString();
+}
+
+async function fetchAccount(id) {
+  const res = await fetch(`${API_BASE}/accounts/${id}`);
+  if (!res.ok) throw new Error(`account ${id} lookup failed: ${res.status}`);
+  return res.json();
+}
+
+async function refreshAccounts() {
+  try {
+    const [a, b] = await Promise.all([fetchAccount("A"), fetchAccount("B")]);
+    accountsEl.innerHTML = "";
+    for (const [id, acc] of [["A", a], ["B", b]]) {
+      const panel = document.createElement("div");
+      panel.className = "panel";
+      panel.innerHTML = `
+        <div class="account-name">Account ${id}</div>
+        <div class="balance">${fmtMoney(acc.balance)}</div>
+        <div class="account-meta">Home: ${acc.home_country}</div>
+        <div class="account-meta">Last seen: ${acc.last_location.city}, ${acc.last_location.country}</div>
+      `;
+      accountsEl.appendChild(panel);
+    }
+  } catch (err) {
+    statusEl.className = "error";
+    statusEl.textContent = `Could not load accounts: ${err.message}`;
+  }
+}
+
+async function refreshIncidents() {
+  try {
+    const res = await fetch(`${API_BASE}/incidents`);
+    if (!res.ok) throw new Error(`incidents fetch failed: ${res.status}`);
+    const incidents = await res.json();
+    incidentsBody.innerHTML = "";
+    for (const inc of incidents.slice().reverse()) {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${fmtTime(inc.at)}</td>
+        <td>${inc.from_account} → ${inc.to_account}</td>
+        <td>${fmtMoney(inc.amount)}</td>
+        <td>${inc.location ? inc.location.city + ", " + inc.location.country : "—"}</td>
+        <td class="verdict-${inc.verdict}">${inc.verdict}</td>
+        <td>${inc.reason || ""}</td>
+      `;
+      incidentsBody.appendChild(row);
+    }
+  } catch (err) {
+    // Incident log is a nice-to-have; a failed poll shouldn't block the rest of the UI.
+  }
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  statusEl.className = "";
+  statusEl.textContent = "Submitting transfer…";
+
+  const body = {
+    from_account: document.getElementById("from").value,
+    to_account: document.getElementById("to").value,
+    amount: Number(document.getElementById("amount").value),
+    spoof_location: spoofSelect.value || null,
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/transfer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      statusEl.className = "error";
+      statusEl.textContent = `Transfer failed (${res.status}): ${data.detail || "unknown error"}`;
+    } else {
+      statusEl.className = "ok";
+      statusEl.textContent = "Transfer accepted.";
+    }
+  } catch (err) {
+    statusEl.className = "error";
+    statusEl.textContent = `Request failed: ${err.message}. Is the backend running at ${API_BASE}?`;
+  } finally {
+    submitBtn.disabled = false;
+    refreshAccounts();
+    refreshIncidents();
+  }
+});
+
+refreshAccounts();
+refreshIncidents();
+setInterval(refreshAccounts, 5000);
+setInterval(refreshIncidents, 5000);
+</script>
+</body>
+</html>
