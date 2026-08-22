@@ -75,21 +75,20 @@ COPY instruqt/docker/proxy/state.json      /opt/proxy/state.json
 COPY instruqt/docker/proxy/static/         /opt/proxy/static/
 
 # ── 8. Shell environment ─────────────────────────────────────────────────────
-RUN echo '' >> /etc/bash.bashrc \
-    && echo '# Workshop environment' >> /etc/bash.bashrc \
-    && echo 'export PATH=$PATH:/root/.temporalio/bin:/usr/local/bin' >> /etc/bash.bashrc \
-    && echo 'export TEMPORAL_ADDRESS="127.0.0.1:7233"' >> /etc/bash.bashrc \
-    && echo 'export PYTHONUNBUFFERED=1' >> /etc/bash.bashrc \
-    && echo 'export HTTP_PROXY="http://127.0.0.1:8888"' >> /etc/bash.bashrc \
-    && echo 'export HTTPS_PROXY="http://127.0.0.1:8888"' >> /etc/bash.bashrc \
-    && echo 'export NO_PROXY="127.0.0.1,localhost"' >> /etc/bash.bashrc \
-    && echo 'export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt' >> /etc/bash.bashrc \
-    && echo 'export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt' >> /etc/bash.bashrc \
-    && echo '[ -f /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion' >> /etc/bash.bashrc
+# These have to be Docker ENV, not appended to /etc/bash.bashrc: Debian's
+# /etc/bash.bashrc starts with `[ -z "${PS1-}" ] && return`, so any
+# non-interactive shell (every nohup'd process a lifecycle script starts)
+# would source it, hit that guard, and never reach exports appended below it.
+# ENV applies to every process unconditionally, interactive or not. (PATH
+# already includes the Temporal CLI from step 3.)
+ENV TEMPORAL_ADDRESS="127.0.0.1:7233"
+ENV HTTP_PROXY="http://127.0.0.1:8888"
+ENV HTTPS_PROXY="http://127.0.0.1:8888"
+ENV NO_PROXY="127.0.0.1,localhost"
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
-RUN echo '' >> /root/.bashrc \
-    && echo '# Source workshop environment' >> /root/.bashrc \
-    && echo '[ -f /etc/bash.bashrc ] && . /etc/bash.bashrc' >> /root/.bashrc
+RUN echo '[ -f /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion' >> /etc/bash.bashrc
 
 WORKDIR /root
 
