@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
+bash /opt/bootstrap-workshop.sh
 source /root/.bashrc || true
 
 pkill -f "uvicorn main:app" || true

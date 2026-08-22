@@ -1,67 +1,8 @@
 #!/bin/bash
-# Track-level setup. Runs once when the attendee enters the track.
-# Everything heavy is baked into the image. This script stages the modules
-# and hackathon/solution apps, starts background services, and bridges the
-# real OPENAI_API_KEY secret into the attendee's shell.
+# Track-level setup. Runs once when the attendee enters the track from
+# challenge 1. The actual bootstrap logic lives in /opt/bootstrap-workshop.sh
+# (baked into the image) because every challenge's own setup-workshop also
+# calls it: Instruqt's per-challenge Preview feature skips track-level
+# scripts, so a challenge previewed standalone needs to bootstrap itself too.
 set -euo pipefail
-
-if [ -z "${OPENAI_API_KEY:-}" ]; then
-    echo "ERROR: OPENAI_API_KEY is not set. Configure the Instruqt secret before starting the track." >&2
-    exit 1
-fi
-
-DIRS=(
-    modules/01-durable-bank-assistant
-    modules/02-durable-bank-tools
-    hackathon
-    solution
-)
-
-# 1. Stage the workshop into the attendee's writable copy.
-if [ ! -d /root/workshop ]; then
-    mkdir -p /root/workshop
-    for dir in "${DIRS[@]}"; do
-        mkdir -p "/root/workshop/$(dirname "${dir}")"
-        cp -r "/opt/workshop/${dir}" "/root/workshop/${dir}"
-    done
-fi
-
-# 2. Stage proxy state into a writable location.
-mkdir -p /root/proxy/static
-cp -r /opt/proxy/* /root/proxy/
-
-# 3. Start background services.
-nohup mitmdump \
-    --listen-port 8888 \
-    --set block_global=false \
-    --set ssl_insecure=false \
-    -s /root/proxy/toggle_addon.py \
-    > /tmp/proxy.log 2>&1 &
-
-nohup /opt/mitmproxy-venv/bin/python /root/proxy/controlpanel.py \
-    > /tmp/controlpanel.log 2>&1 &
-
-nohup temporal server start-dev \
-    --ip 0.0.0.0 \
-    --db-filename /root/temporal.db \
-    --log-level warn \
-    > /tmp/temporal-server.log 2>&1 &
-
-# 4. Wait for Temporal health.
-for i in $(seq 1 60); do
-    if temporal operator cluster health --address 127.0.0.1:7233 >/dev/null 2>&1; then
-        echo "Temporal server healthy."
-        break
-    fi
-    sleep 1
-done
-
-# 5. Bridge the secret into the attendee's shell. Instruqt injects secrets
-#    into lifecycle scripts only, so any worker/uvicorn process the attendee
-#    starts from a terminal would not see it otherwise.
-cat >> /root/.bashrc <<BASHRC
-export OPENAI_API_KEY="${OPENAI_API_KEY}"
-export TEMPORAL_ADDRESS="127.0.0.1:7233"
-BASHRC
-
-echo "==> Track setup complete."
+bash /opt/bootstrap-workshop.sh

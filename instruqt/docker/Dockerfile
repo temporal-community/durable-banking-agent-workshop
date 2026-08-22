@@ -74,6 +74,14 @@ COPY instruqt/docker/proxy/controlpanel.py /opt/proxy/controlpanel.py
 COPY instruqt/docker/proxy/state.json      /opt/proxy/state.json
 COPY instruqt/docker/proxy/static/         /opt/proxy/static/
 
+# Shared setup logic, called by both track_scripts/setup-workshop and every
+# challenge's own setup-workshop. Instruqt's per-challenge Preview feature
+# skips track-level scripts, so a challenge previewed standalone still needs
+# to stage /root/workshop and start Temporal/mitmproxy/the control panel
+# itself; the sentinel file inside the script makes repeat calls a no-op.
+COPY instruqt/docker/bootstrap-workshop.sh /opt/bootstrap-workshop.sh
+RUN chmod +x /opt/bootstrap-workshop.sh
+
 # ── 8. Shell environment ─────────────────────────────────────────────────────
 # These have to be Docker ENV, not appended to /etc/bash.bashrc: Debian's
 # /etc/bash.bashrc starts with `[ -z "${PS1-}" ] && return`, so any
