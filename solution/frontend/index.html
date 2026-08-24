@@ -146,6 +146,23 @@ function apiFetch(path, options) {
   return fetch(`${API_BASE}${path}`, { credentials: "include", ...options });
 }
 
+// Instruqt's proxy only trusts a subdomain once the browser has actually been sent there. The
+// backend has no tab of its own, so nothing does that naturally, and the very first cross-origin
+// fetch to it fails looking like a CORS error even though the CORS config itself is fine. A
+// hidden iframe forces that first visit before any real fetch call runs.
+function warmBackendOrigin() {
+  return new Promise((resolve) => {
+    if (API_BASE.startsWith("http://localhost")) return resolve();
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = API_BASE + "/";
+    iframe.onload = resolve;
+    iframe.onerror = resolve;
+    document.body.appendChild(iframe);
+    setTimeout(resolve, 2000);
+  });
+}
+
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 60000;
 
@@ -320,8 +337,10 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-refreshAccounts();
-setInterval(refreshAccounts, 5000);
+warmBackendOrigin().then(() => {
+  refreshAccounts();
+  setInterval(refreshAccounts, 5000);
+});
 </script>
 </body>
 </html>
