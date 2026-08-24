@@ -138,6 +138,30 @@ If you want `check-workshop`'s automated checks to find your workflows, use the 
 checklist below by reading the Temporal UI yourself. The always-running solution preview uses its
 own separate task queue, so it never gets mistaken for your work.
 
+### Commands
+
+```bash
+# Backend. --host 0.0.0.0 matters: uvicorn's default of 127.0.0.1 is invisible to the tab
+# proxy and shows up there as a 572.
+cd hackathon/backend && uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+```bash
+# solution/backend, only if you want to run a second copy of it yourself to compare - the
+# one on the Solution Frontend tab (port 8001) is already running and needs nothing from you.
+# No --reload here: every transfer writes ledger.json in this same directory, and --reload
+# restarts the server on every write.
+cd solution/backend
+uv run python -m worker &
+uv run uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+You don't need a real `OPENAI_API_KEY` to build and check most of this. A fake value like
+`sk-test-not-real` exercises the geo-IP lookup, the workflow, and every activity up through the
+fraud-check `Agent`'s actual model call, which is the only point that needs a real key. If a
+transfer fails with an OpenAI authentication error, that's expected with a fake key, and it means
+everything before it worked.
+
 ## Prove It
 
 You're done when all four of these hold. There's no leaderboard here, this is a checklist, not a
