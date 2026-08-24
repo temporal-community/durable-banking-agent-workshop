@@ -3,86 +3,260 @@
 <head>
 <meta charset="utf-8" />
 <title>Ledger Bank — Fraud Desk (Durable)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 1200'%3E%3Cpath fill='%23444CE7' d='M651.14,517.35C642.02,449.03,618.94,392,583.49,392s-58.53,57.03-67.65,125.35c-68.32,9.12-125.35,32.2-125.35,67.65s57.04,58.53,125.35,67.65c9.12,68.31,32.2,125.35,67.65,125.35s58.53-57.04,67.65-125.35c68.32-9.12,125.35-32.2,125.35-67.65S719.45,526.47,651.14,517.35z M513.61,632.75c-65.43-9.45-103.59-31.08-103.59-47.75s38.16-38.3,103.59-47.75c-1.44,15.75-2.19,31.83-2.19,47.75C511.42,600.92,512.17,617.01,513.61,632.75z M583.49,411.53c16.67,0,38.3,38.16,47.75,103.59c-15.74-1.44-31.83-2.19-47.75-2.19s-32.01,0.75-47.75,2.19C545.19,449.69,566.82,411.53,583.49,411.53z M653.37,632.75c-3.22,0.47-16.43,2.02-19.77,2.35c-0.33,3.35-1.89,16.55-2.35,19.77c-9.45,65.43-31.08,103.59-47.75,103.59s-38.3-38.16-47.75-103.59c-0.46-3.22-2.02-16.43-2.35-19.77c-1.52-15.51-2.44-32.17-2.44-50.1s0.92-34.59,2.44-50.11c15.51-1.52,32.17-2.44,50.1-2.44s34.59,0.92,50.1,2.44c3.35,0.33,16.55,1.89,19.77,2.35c65.43,9.45,103.6,31.09,103.6,47.75S718.8,623.3,653.37,632.75z'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1420;
-    --panel: #171d2e;
-    --border: #2a3348;
-    --text: #e7ebf3;
-    --muted: #8a94ac;
-    --accent: #4f8cff;
-    --good: #35c46a;
-    --bad: #ef5a5a;
-    --warn: #e8b339;
+    --bg: #0a0a0d;
+    --bg-2: #0e0f14;
+    --panel: #131419;
+    --panel-2: #17181f;
+    --border: rgba(248, 250, 252, 0.09);
+    --border-hi: rgba(248, 250, 252, 0.18);
+    --text: #f2f3f7;
+    --muted: #8b8fa3;
+    --muted-2: #5c6076;
+    --uv: #444ce7;
+    --uv-soft: #6b72ea;
+    --uv-glow: rgba(68, 76, 231, 0.35);
+    --good: #34d399;
+    --good-glow: rgba(52, 211, 153, 0.28);
+    --bad: #fb6a6a;
+    --bad-glow: rgba(251, 106, 106, 0.3);
+    --warn: #f0a83d;
+    --warn-glow: rgba(240, 168, 61, 0.32);
+    --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--bg);
+    font-family: var(--font-mono);
+    background:
+      radial-gradient(ellipse 900px 500px at 12% -10%, var(--uv-glow) 0%, transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 0%, var(--good-glow) 0%, transparent 55%),
+      var(--bg);
     color: var(--text);
-    padding: 24px;
+    padding: 32px 28px 48px;
+    min-height: 100%;
+    position: relative;
   }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .subtitle { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-  }
-  .account-name { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .balance { font-size: 28px; font-weight: 600; margin: 4px 0; }
-  .account-meta { font-size: 12px; color: var(--muted); }
-  form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  select, input, button {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 13px;
-  }
-  button {
-    background: var(--accent);
-    border: none;
-    color: white;
+  .wrap { max-width: 980px; margin: 0 auto; position: relative; }
+
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { width: 30px; height: 30px; flex: none; filter: drop-shadow(0 0 10px var(--uv-glow)); }
+  .brand-text h1 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
     font-weight: 600;
-    cursor: pointer;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin: 0;
+    line-height: 1.05;
   }
-  button:disabled { opacity: 0.5; cursor: default; }
-  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }
-  .verdict-accepted, .verdict-completed { color: var(--good); font-weight: 600; }
-  .verdict-declined-fraud, .verdict-failed { color: var(--bad); font-weight: 600; }
-  .verdict-pending, .verdict-running { color: var(--warn); font-weight: 600; }
-  #status { margin: 10px 0; font-size: 13px; min-height: 18px; }
+  .brand-text .eyebrow {
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    margin: 0 0 3px;
+  }
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    background: rgba(52, 211, 153, 0.08);
+    color: var(--good);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .status-chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--good);
+    box-shadow: 0 0 8px var(--good);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .subtitle {
+    color: var(--muted);
+    margin: -14px 0 26px;
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+  .subtitle .accent { color: var(--good); }
+  .subtitle code { background: var(--bg-2); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--uv-soft); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+  .panel {
+    background: linear-gradient(165deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel.account { padding-top: 20px; }
+  .panel.account::after {
+    content: attr(data-letter);
+    position: absolute;
+    right: 6px; top: -22px;
+    font-family: var(--font-display);
+    font-size: 120px;
+    font-weight: 600;
+    color: rgba(248, 250, 252, 0.03);
+    line-height: 1;
+    pointer-events: none;
+  }
+  .panel.account::before {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .panel.account[data-letter="A"]::before { background: linear-gradient(var(--uv-soft), transparent); }
+  .panel.account[data-letter="B"]::before { background: linear-gradient(var(--good), transparent); }
+
+  .account-name { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+  .balance {
+    font-family: var(--font-display);
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 6px 0 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .account-meta { font-size: 11.5px; color: var(--muted-2); line-height: 1.7; }
+  .account-meta b { color: var(--muted); font-weight: 500; }
+
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+  form > div { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 10.5px; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.08em; }
+  select, input, button {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13px;
+    font-family: var(--font-mono);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  select:focus, input:focus {
+    outline: none;
+    border-color: var(--uv-soft);
+    box-shadow: 0 0 0 3px var(--uv-glow);
+  }
+  #amount { width: 110px; font-variant-numeric: tabular-nums; }
+  button {
+    background: linear-gradient(180deg, var(--uv-soft), var(--uv));
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 4px 14px var(--uv-glow);
+  }
+  button:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+  button:active:not(:disabled) { transform: translateY(0); }
+  button:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+  .hint {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    background: rgba(68, 76, 231, 0.07);
+    border: 1px dashed rgba(68, 76, 231, 0.35);
+    border-radius: 8px;
+  }
+  .hint b { color: var(--uv-soft); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted-2); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+  tbody tr:hover { background: rgba(248, 250, 252, 0.02); }
+  td.money { font-variant-numeric: tabular-nums; }
+  code { background: var(--bg-2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; color: var(--uv-soft); }
+
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .verdict-accepted, .verdict-completed { color: var(--good); background: var(--good-glow); }
+  .verdict-declined-fraud, .verdict-failed { color: var(--bad); background: var(--bad-glow); }
+  .verdict-pending, .verdict-running { color: var(--warn); background: var(--warn-glow); }
+
+  #status { margin: 14px 0 0; font-size: 12.5px; min-height: 18px; }
   #status.error { color: var(--bad); }
   #status.ok { color: var(--good); }
   #status.pending { color: var(--warn); }
-  code { background: var(--bg); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; }
+
+  footer {
+    margin-top: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted-2);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+  }
+  footer svg { width: 13px; height: 13px; opacity: 0.6; }
 </style>
 </head>
 <body>
-  <h1>Ledger Bank — Fraud Desk <span style="color: var(--muted); font-weight: 400;">(durable)</span></h1>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path fill="#444ce7" d="M651.14,517.35C642.02,449.03,618.94,392,583.49,392s-58.53,57.03-67.65,125.35c-68.32,9.12-125.35,32.2-125.35,67.65s57.04,58.53,125.35,67.65c9.12,68.31,32.2,125.35,67.65,125.35s58.53-57.04,67.65-125.35c68.32-9.12,125.35-32.2,125.35-67.65S719.45,526.47,651.14,517.35z M513.61,632.75c-65.43-9.45-103.59-31.08-103.59-47.75s38.16-38.3,103.59-47.75c-1.44,15.75-2.19,31.83-2.19,47.75C511.42,600.92,512.17,617.01,513.61,632.75z M583.49,411.53c16.67,0,38.3,38.16,47.75,103.59c-15.74-1.44-31.83-2.19-47.75-2.19s-32.01,0.75-47.75,2.19C545.19,449.69,566.82,411.53,583.49,411.53z M653.37,632.75c-3.22,0.47-16.43,2.02-19.77,2.35c-0.33,3.35-1.89,16.55-2.35,19.77c-9.45,65.43-31.08,103.59-47.75,103.59s-38.3-38.16-47.75-103.59c-0.46-3.22-2.02-16.43-2.35-19.77c-1.52-15.51-2.44-32.17-2.44-50.1s0.92-34.59,2.44-50.11c15.51-1.52,32.17-2.44,50.1-2.44s34.59,0.92,50.1,2.44c3.35,0.33,16.55,1.89,19.77,2.35c65.43,9.45,103.6,31.09,103.6,47.75S718.8,623.3,653.37,632.75z"/></svg>
+      <div class="brand-text">
+        <p class="eyebrow">Ledger Bank &middot; Fraud Desk</p>
+        <h1>solution/backend</h1>
+      </div>
+    </div>
+    <span class="status-chip"><span class="dot"></span>Durable &middot; Temporal-backed</span>
+  </header>
+
   <p class="subtitle">
-    Same fraud desk, now running as a Temporal workflow. Submitting a transfer no longer blocks —
-    watch it move through <code>pending → running → completed</code> even if the worker gets killed
-    mid-flight.
+    Same fraud desk, now running as a Temporal workflow. Submitting a transfer no longer blocks
+    &mdash; watch it move through <code>pending → running → completed</code>
+    <span class="accent">even if the worker gets killed mid-flight.</span>
   </p>
 
   <div class="grid" id="accounts"></div>
 
-  <div class="panel" style="margin-bottom: 20px;">
+  <div class="panel" style="margin-bottom: 16px;">
+    <p class="section-label">Wire a transfer</p>
     <form id="transfer-form">
       <div>
         <label for="from">From</label>
@@ -103,18 +277,16 @@
         </select>
       </div>
       <div>
-        <button type="submit" id="submit-btn">Send transfer</button>
+        <button type="submit" id="submit-btn">Send transfer →</button>
       </div>
     </form>
-    <p class="hint">
-      Known fraudster hideouts: pick a far-flung city below and watch the fraud desk catch the
-      impossible-travel pattern — durably this time.
-    </p>
+    <p class="hint"><b>Known fraudster hideouts:</b> pick a far-flung city above and watch the fraud
+      desk catch the impossible-travel pattern &mdash; durably this time.</p>
     <div id="status"></div>
   </div>
 
   <div class="panel">
-    <h2 style="font-size:14px; margin-top:0;">Incident log</h2>
+    <p class="section-label">Incident log <span style="text-transform:none; letter-spacing:0; color: var(--muted-2); font-size: 10.5px;">(tracked here in browser memory)</span></p>
     <table>
       <thead>
         <tr><th>Time</th><th>Workflow</th><th>From → To</th><th>Amount</th><th>Status</th><th>Detail</th></tr>
@@ -122,6 +294,12 @@
       <tbody id="incidents-body"></tbody>
     </table>
   </div>
+
+  <footer>
+    <svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M651.14,517.35C642.02,449.03,618.94,392,583.49,392s-58.53,57.03-67.65,125.35c-68.32,9.12-125.35,32.2-125.35,67.65s57.04,58.53,125.35,67.65c9.12,68.31,32.2,125.35,67.65,125.35s58.53-57.04,67.65-125.35c68.32-9.12,125.35-32.2,125.35-67.65S719.45,526.47,651.14,517.35z M513.61,632.75c-65.43-9.45-103.59-31.08-103.59-47.75s38.16-38.3,103.59-47.75c-1.44,15.75-2.19,31.83-2.19,47.75C511.42,600.92,512.17,617.01,513.61,632.75z M583.49,411.53c16.67,0,38.3,38.16,47.75,103.59c-15.74-1.44-31.83-2.19-47.75-2.19s-32.01,0.75-47.75,2.19C545.19,449.69,566.82,411.53,583.49,411.53z M653.37,632.75c-3.22,0.47-16.43,2.02-19.77,2.35c-0.33,3.35-1.89,16.55-2.35,19.77c-9.45,65.43-31.08,103.59-47.75,103.59s-38.3-38.16-47.75-103.59c-0.46-3.22-2.02-16.43-2.35-19.77c-1.52-15.51-2.44-32.17-2.44-50.1s0.92-34.59,2.44-50.11c15.51-1.52,32.17-2.44,50.1-2.44s34.59,0.92,50.1,2.44c3.35,0.33,16.55,1.89,19.77,2.35c65.43,9.45,103.6,31.09,103.6,47.75S718.8,623.3,653.37,632.75z"/></svg>
+    Module 3 &middot; Durable Banking Agent workshop
+  </footer>
+</div>
 
 <script>
 // Instruqt exposes each port as its own hostname (<host>-<port>-<participant>.env.play.instruqt.com),
@@ -180,8 +358,8 @@ function renderIncidents() {
       <td>${fmtTime(inc.at)}</td>
       <td><code>${inc.workflow_id.slice(0, 13)}…</code></td>
       <td>${inc.from_account} → ${inc.to_account}</td>
-      <td>${fmtMoney(inc.amount)}</td>
-      <td class="verdict-${inc.status.toLowerCase()}">${inc.status}</td>
+      <td class="money">${fmtMoney(inc.amount)}</td>
+      <td><span class="pill verdict-${inc.status.toLowerCase()}">${inc.status}</span></td>
       <td>${inc.detail || ""}</td>
     `;
     incidentsBody.appendChild(row);
@@ -200,12 +378,13 @@ async function refreshAccounts() {
     accountsEl.innerHTML = "";
     for (const [id, acc] of [["A", a], ["B", b]]) {
       const panel = document.createElement("div");
-      panel.className = "panel";
+      panel.className = "panel account";
+      panel.setAttribute("data-letter", id);
       panel.innerHTML = `
         <div class="account-name">Account ${id}</div>
         <div class="balance">${fmtMoney(acc.balance)}</div>
-        <div class="account-meta">Home: ${acc.home_country}</div>
-        <div class="account-meta">Last seen: ${acc.last_location.city}, ${acc.last_location.country}</div>
+        <div class="account-meta"><b>Home</b> ${acc.home_country}</div>
+        <div class="account-meta"><b>Last seen</b> ${acc.last_location.city}, ${acc.last_location.country}</div>
       `;
       accountsEl.appendChild(panel);
     }
