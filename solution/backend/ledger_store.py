@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-LEDGER_PATH = Path(__file__).parent / "ledger.json"
+# Deliberately outside this project directory: uvicorn --reload watches the
+# whole tree it runs from, and a ledger.json here would trigger a restart on
+# every transfer.
+LEDGER_PATH = Path("/tmp/durable-banking-ledger.json")
 
 DEFAULT_STATE = {
     "accounts": {

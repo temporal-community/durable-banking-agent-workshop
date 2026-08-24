@@ -209,6 +209,12 @@ async function refreshAccounts() {
       `;
       accountsEl.appendChild(panel);
     }
+    // statusEl doubles as the transfer-status banner, so only clear our own
+    // stale accounts-load error, never a transfer result the user hasn't seen.
+    if (statusEl.textContent.startsWith("Could not load accounts:")) {
+      statusEl.className = "";
+      statusEl.textContent = "";
+    }
   } catch (err) {
     statusEl.className = "error";
     statusEl.textContent = `Could not load accounts: ${err.message}`;

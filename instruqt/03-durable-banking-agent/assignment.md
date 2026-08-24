@@ -66,7 +66,7 @@ enhanced_loading: null
 
 > [!NOTE]
 > **Your tabs.**
-> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run uvicorn main:app --reload` here.
+> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` here. The `--host 0.0.0.0` matters: uvicorn's default of `127.0.0.1` is invisible to the Frontend tab's proxy and shows up there as a 572.
 > - [button label="Frontend" background="#444CE7"](tab-1) is the live transfer UI: two accounts, a transfer form, and an incident log.
 > - [button label="Temporal UI" background="#444CE7"](tab-2) is the event history once you have a workflow.
 > - [button label="Network Control Panel" background="#444CE7"](tab-3) turns OpenAI and the geolocation service off, on demand.
@@ -118,7 +118,11 @@ Temporalize `hackathon/backend/` without changing the product:
 `solution/` is the fully temporalized reference if you want to compare shapes: same idea, `POST
 /transfer` starts a workflow and returns a workflow ID instead of blocking, and the frontend polls
 for the result. `hackathon/` and `solution/` are not required to end up identical; they just have
-to behave the same way from the outside.
+to behave the same way from the outside. If you run `solution/backend` to compare against it, start
+it the same way, with an explicit host and port: `cd solution/backend && uv run python -m worker`
+in one terminal, then `uv run uvicorn main:app --host 0.0.0.0 --port 8000` in another. Don't add
+`--reload` here: every transfer writes `ledger.json` inside this same directory, and `--reload`
+would restart the server on every write.
 
 If you want `check-workshop`'s automated checks to find your workflows, use the task queue
 `banking-transfer-tq` and workflow IDs prefixed `transfer-`, the same convention `solution/`
