@@ -30,11 +30,17 @@ tabs:
   hostname: workshop
   workdir: /root/workshop/hackathon/backend
 - id: 64f3mooextj2
-  title: Frontend
+  title: Hackathon Frontend
   type: service
   hostname: workshop
   path: /
   port: 8080
+- id: j3zbcvhyhin7
+  title: Solution Frontend
+  type: service
+  hostname: workshop
+  path: /
+  port: 8081
 - id: yblr9woe1s6o
   title: Temporal UI
   type: service
@@ -66,22 +72,27 @@ enhanced_loading: null
 
 > [!NOTE]
 > **Your tabs.**
-> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` here. The `--host 0.0.0.0` matters: uvicorn's default of `127.0.0.1` is invisible to the Frontend tab's proxy and shows up there as a 572.
-> - [button label="Frontend" background="#444CE7"](tab-1) is the live transfer UI: two accounts, a transfer form, and an incident log.
-> - [button label="Temporal UI" background="#444CE7"](tab-2) is the event history once you have a workflow.
-> - [button label="Network Control Panel" background="#444CE7"](tab-3) turns OpenAI and the geolocation service off, on demand.
-> - [button label="Editor" background="#444CE7"](tab-4) is `hackathon/`, the code you're changing.
-> - [button label="Solution" background="#444CE7"](tab-5) is the finished reference, `solution/`. Read it if you're stuck, but don't just copy it in. The point is building it.
+> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` here. The `--host 0.0.0.0` matters: uvicorn's default of `127.0.0.1` is invisible to the tab proxy and shows up there as a 572.
+> - [button label="Hackathon Frontend" background="#444CE7"](tab-1) is the live transfer UI for the code you're changing: two accounts, a transfer form, and an incident log.
+> - [button label="Solution Frontend" background="#444CE7"](tab-2) is the same UI against the finished reference. It's live from the start, nothing to run.
+> - [button label="Temporal UI" background="#444CE7"](tab-3) is the event history once you have a workflow. The solution's workflows are already there.
+> - [button label="Network Control Panel" background="#444CE7"](tab-4) turns OpenAI and the geolocation service off, on demand.
+> - [button label="Editor" background="#444CE7"](tab-5) is `hackathon/`, the code you're changing.
+> - [button label="Solution" background="#444CE7"](tab-6) is the finished reference, `solution/`. Read it if you're stuck, but don't just copy it in. The point is building it.
 
 ## The Incident
 
 Ledger Bank has two accounts, A (New York, USD) and B (London, USD-equivalent for this workshop).
 Someone is trying to move money out of one of them from a location it has never transacted from
-before. Open the [button label="Frontend" background="#444CE7"](tab-1) tab, pick a **spoof
-location** far from an account's usual city, and submit a transfer. Watch it get declined, and
-watch the incident log record it.
+before. Open the [button label="Hackathon Frontend" background="#444CE7"](tab-1) tab, pick a
+**spoof location** far from an account's usual city, and submit a transfer. Watch it get declined,
+and watch the incident log record it.
 
 Now do a normal transfer between the two home cities. It goes through.
+
+Curious what this looks like once it's durable? The [button label="Solution Frontend"
+background="#444CE7"](tab-2) tab is the same product, already running against the finished
+`solution/` backend. Try the same spoofed transfer there.
 
 ## Why This Is Fragile
 
@@ -95,7 +106,7 @@ Everything so far ran inside `hackathon/backend/main.py`, synchronously, in one 
 
 Kill the backend process mid-transfer (`Ctrl-C` in the [button label="Backend"
 background="#444CE7"](tab-0) terminal, or toggle a service off in the [button label="Network
-Control Panel" background="#444CE7"](tab-3) mid-request) and there is no way to know if the debit
+Control Panel" background="#444CE7"](tab-4) mid-request) and there is no way to know if the debit
 happened, the credit happened, both, or neither. Nothing recorded what was in flight.
 
 ## The Task
@@ -118,15 +129,14 @@ Temporalize `hackathon/backend/` without changing the product:
 `solution/` is the fully temporalized reference if you want to compare shapes: same idea, `POST
 /transfer` starts a workflow and returns a workflow ID instead of blocking, and the frontend polls
 for the result. `hackathon/` and `solution/` are not required to end up identical; they just have
-to behave the same way from the outside. If you run `solution/backend` to compare against it, start
-it the same way, with an explicit host and port: `cd solution/backend && uv run python -m worker`
-in one terminal, then `uv run uvicorn main:app --host 0.0.0.0 --port 8000` in another. Don't add
-`--reload` here: every transfer writes `ledger.json` inside this same directory, and `--reload`
-would restart the server on every write.
+to behave the same way from the outside. `solution/` is already running the whole time on its own
+ports, the [button label="Solution Frontend" background="#444CE7"](tab-2) tab is it, nothing to
+start.
 
 If you want `check-workshop`'s automated checks to find your workflows, use the task queue
-`banking-transfer-tq` and workflow IDs prefixed `transfer-`, the same convention `solution/`
-uses. Not required. Without it, verify the checklist below by reading the Temporal UI yourself.
+`banking-transfer-tq` and workflow IDs prefixed `transfer-`. Not required. Without it, verify the
+checklist below by reading the Temporal UI yourself. The always-running solution preview uses its
+own separate task queue, so it never gets mistaken for your work.
 
 ## Prove It
 
@@ -136,12 +146,12 @@ score.
 1. **Resume, not restart.** Start a transfer, kill the worker process
    (`pkill -9 -f "modules/hackathon\|hackathon/backend"` or however you've named it) during the
    `workflow.sleep` window, restart the worker, and confirm in the [button label="Temporal UI"
-   background="#444CE7"](tab-2) tab that the same workflow ID resumes and finishes, with the
+   background="#444CE7"](tab-3) tab that the same workflow ID resumes and finishes, with the
    ledger showing neither a duplicated nor a lost transfer.
 2. **Fraud declines don't retry.** A spoofed impossible-travel transfer shows exactly one failed
    attempt in event history, not a retrying activity.
 3. **Geo-IP failures do retry.** Toggle **Geolocation** off in the [button label="Network Control
-   Panel" background="#444CE7"](tab-3) tab mid-transfer; the activity should show as **Retrying**,
+   Panel" background="#444CE7"](tab-4) tab mid-transfer; the activity should show as **Retrying**,
    not failed.
 4. **Idempotent ledger updates.** Re-delivering the same workflow ID's ledger-update activity (a
    replay, or a manual retry) does not move money twice.

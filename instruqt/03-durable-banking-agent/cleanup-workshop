@@ -3,4 +3,5 @@ set -euo pipefail
 pkill -f "uvicorn main:app" || true
 pkill -f "python -m worker" || true
 pkill -f "http.server 8080" || true
+pkill -f "http.server 8081" || true
 sleep 1

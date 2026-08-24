@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import timedelta
 
 from temporalio.client import Client
@@ -9,7 +10,11 @@ from temporalio.worker import Worker
 from activities import apply_transfer_to_ledger, geolocate_ip, get_account_for_transfer
 from transfer_workflow import TransferWorkflow
 
-TASK_QUEUE = "banking-transfer-tq"
+# Isolated from "banking-transfer-tq" (the convention suggested to participants for their own
+# temporalized hackathon/backend) so the always-on solution preview tab never pollutes
+# check-workshop's target queue. solve-workshop overrides this to "banking-transfer-tq" for its
+# own verification-only run.
+TASK_QUEUE = os.environ.get("TRANSFER_TASK_QUEUE", "solution-preview-tq")
 
 
 async def main() -> None:

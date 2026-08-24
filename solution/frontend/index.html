@@ -132,7 +132,7 @@ const API_BASE = window.LEDGER_API_BASE || (() => {
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     return "http://localhost:8000";
   }
-  return `${protocol}//${hostname.replace(/-\d+-/, "-8000-")}`;
+  return `${protocol}//${hostname.replace(/-\d+-/, "-8001-")}`;
 })();
 
 // The backend tab lives on a different Instruqt subdomain, so this is a cross-origin request.

@@ -1,19 +1,25 @@
 #!/bin/bash
+# Simulates a correctly-solved hackathon/backend for check-workshop's automated verification
+# (instruqt track test, or an explicit admin "solve" action) - never run by a real participant's
+# own exploration. Runs a second instance of solution/backend on the hackathon's own port 8000,
+# explicitly using the "banking-transfer-tq" convention a real solved hackathon/backend would use.
+# The always-on preview instance on port 8001 ("solution-preview-tq") is left running untouched.
 set -euxo pipefail
 source /root/.bashrc || true
 
-pkill -f "uvicorn main:app" || true
+pkill -f "uvicorn main:app --host 0.0.0.0 --port 8000" || true
 pkill -f "python -m worker" || true
 pkill -f "http.server 8080" || true
 sleep 1
 
 cd /root/workshop/solution/backend
-nohup uv run python -m worker > /tmp/solve-03-worker.log 2>&1 &
+TRANSFER_TASK_QUEUE=banking-transfer-tq nohup uv run python -m worker > /tmp/solve-03-worker.log 2>&1 &
 sleep 5
-nohup uv run uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/solve-03-backend.log 2>&1 &
+TRANSFER_TASK_QUEUE=banking-transfer-tq nohup uv run uvicorn main:app --host 0.0.0.0 --port 8000 \
+    > /tmp/solve-03-backend.log 2>&1 &
 
 nohup python3 -m http.server 8080 --directory /root/workshop/solution/frontend \
     > /tmp/solve-03-frontend.log 2>&1 &
 
-echo "==> 03-durable-banking-agent solved: solution/backend + solution/frontend are running."
+echo "==> 03-durable-banking-agent solved: solution/backend is standing in for hackathon/backend on port 8000."
 exit 0
