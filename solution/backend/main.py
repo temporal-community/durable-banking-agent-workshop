@@ -3,10 +3,11 @@ from __future__ import annotations
 import uuid
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from pathlib import Path
 
 from agents import trace
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from temporalio.client import Client, WorkflowFailureError
 from temporalio.contrib.openai_agents import ModelActivityParameters, OpenAIAgentsPlugin
@@ -15,6 +16,8 @@ from temporalio.envconfig import ClientConfig
 import ledger_store
 from transfer_workflow import TransferWorkflow
 from worker import TASK_QUEUE
+
+FRONTEND_INDEX = Path(__file__).parent.parent / "frontend" / "index.html"
 
 client: Client | None = None
 
@@ -32,16 +35,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Ledger Bank - Solution Backend", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    # A wildcard origin can't be combined with credentialed requests (the browser rejects it),
-    # and the frontend has to send its Instruqt auth cookie cross-origin to reach this tab's
-    # own subdomain. allow_origin_regex matches both local dev and every Instruqt sandbox host.
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.env\.play\.instruqt\.com",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+
+@app.get("/")
+def frontend() -> FileResponse:
+    # Served from the same origin as the API, so the frontend never needs a cross-origin fetch,
+    # CORS config, or Instruqt's per-subdomain auth cookie at all - the network control panel's
+    # own Flask app (docker/proxy/controlpanel.py) uses this same same-origin pattern.
+    return FileResponse(FRONTEND_INDEX)
 
 
 class TransferRequest(BaseModel):

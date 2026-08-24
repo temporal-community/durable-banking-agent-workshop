@@ -1,26 +1,27 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from fraud_check import IMPOSSIBLE_TRAVEL_SPEED_KMH, check_transfer_for_fraud
 from geo import SPOOFABLE_LOCATIONS, geolocate_ip, haversine_km
 from ledger import accounts, incidents, log_incident
 
+FRONTEND_INDEX = Path(__file__).parent.parent / "frontend" / "index.html"
+
 app = FastAPI(title="Ledger Bank - Hackathon Backend")
-app.add_middleware(
-    CORSMiddleware,
-    # A wildcard origin can't be combined with credentialed requests (the browser rejects it),
-    # and the frontend has to send its Instruqt auth cookie cross-origin to reach this tab's
-    # own subdomain. allow_origin_regex matches both local dev and every Instruqt sandbox host.
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.env\.play\.instruqt\.com",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+
+@app.get("/")
+def frontend() -> FileResponse:
+    # Served from the same origin as the API, so the frontend never needs a cross-origin fetch,
+    # CORS config, or Instruqt's per-subdomain auth cookie at all - the network control panel's
+    # own Flask app (docker/proxy/controlpanel.py) uses this same same-origin pattern.
+    return FileResponse(FRONTEND_INDEX)
 
 
 class TransferRequest(BaseModel):

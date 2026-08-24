@@ -34,13 +34,13 @@ tabs:
   type: service
   hostname: workshop
   path: /
-  port: 8080
+  port: 8000
 - id: j3zbcvhyhin7
   title: Solution Frontend
   type: service
   hostname: workshop
   path: /
-  port: 8081
+  port: 8001
 - id: yblr9woe1s6o
   title: Temporal UI
   type: service
@@ -72,7 +72,7 @@ enhanced_loading: null
 
 > [!NOTE]
 > **Your tabs.**
-> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` here. The `--host 0.0.0.0` matters: uvicorn's default of `127.0.0.1` is invisible to the tab proxy and shows up there as a 572.
+> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` here. The `--host 0.0.0.0` matters: uvicorn's default of `127.0.0.1` is invisible to the tab proxy and shows up there as a 572. This same process serves both the API and the transfer UI, so the Hackathon Frontend tab needs it running too.
 > - [button label="Hackathon Frontend" background="#444CE7"](tab-1) is the live transfer UI for the code you're changing: two accounts, a transfer form, and an incident log.
 > - [button label="Solution Frontend" background="#444CE7"](tab-2) is the same UI against the finished reference. It's live from the start, nothing to run.
 > - [button label="Temporal UI" background="#444CE7"](tab-3) is the event history once you have a workflow. The solution's workflows are already there.
@@ -130,7 +130,7 @@ Temporalize `hackathon/backend/` without changing the product:
 /transfer` starts a workflow and returns a workflow ID instead of blocking, and the frontend polls
 for the result. `hackathon/` and `solution/` are not required to end up identical; they just have
 to behave the same way from the outside. `solution/` is already running the whole time on its own
-ports, the [button label="Solution Frontend" background="#444CE7"](tab-2) tab is it, nothing to
+port, the [button label="Solution Frontend" background="#444CE7"](tab-2) tab is it, nothing to
 start.
 
 If you want `check-workshop`'s automated checks to find your workflows, use the task queue

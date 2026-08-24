@@ -128,39 +128,11 @@
   </div>
 
 <script>
-// Instruqt exposes each port as its own hostname (<host>-<port>-<participant>.env.play.instruqt.com),
-// there is no shared "localhost" between tabs, so the backend's URL has to be derived from this
-// page's own hostname rather than hardcoded.
-const API_BASE = window.LEDGER_API_BASE || (() => {
-  const { protocol, hostname } = window.location;
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return "http://localhost:8000";
-  }
-  return `${protocol}//${hostname.replace(/-\d+-/, "-8001-")}`;
-})();
-
-// The backend tab lives on a different Instruqt subdomain, so this is a cross-origin request.
-// Instruqt's proxy needs the participant's auth cookie to authorize that subdomain, and fetch
-// omits cookies on cross-origin requests unless told otherwise.
+// This page is served by the same FastAPI app it talks to (see main.py's "/" route), so every
+// call below is same-origin: no cross-origin fetch, no CORS config, no Instruqt auth cookie
+// dance needed at all.
 function apiFetch(path, options) {
-  return fetch(`${API_BASE}${path}`, { credentials: "include", ...options });
-}
-
-// Instruqt's proxy only trusts a subdomain once the browser has actually been sent there. The
-// backend has no tab of its own, so nothing does that naturally, and the very first cross-origin
-// fetch to it fails looking like a CORS error even though the CORS config itself is fine. A
-// hidden iframe forces that first visit before any real fetch call runs.
-function warmBackendOrigin() {
-  return new Promise((resolve) => {
-    if (API_BASE.startsWith("http://localhost")) return resolve();
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = API_BASE + "/";
-    iframe.onload = resolve;
-    iframe.onerror = resolve;
-    document.body.appendChild(iframe);
-    setTimeout(resolve, 2000);
-  });
+  return fetch(path, options);
 }
 
 const POLL_INTERVAL_MS = 1500;
@@ -330,17 +302,15 @@ form.addEventListener("submit", async (e) => {
     }
   } catch (err) {
     statusEl.className = "error";
-    statusEl.textContent = `Request failed: ${err.message}. Is the backend running at ${API_BASE}?`;
+    statusEl.textContent = `Request failed: ${err.message}.`;
   } finally {
     submitBtn.disabled = false;
     refreshAccounts();
   }
 });
 
-warmBackendOrigin().then(() => {
-  refreshAccounts();
-  setInterval(refreshAccounts, 5000);
-});
+refreshAccounts();
+setInterval(refreshAccounts, 5000);
 </script>
 </body>
 </html>

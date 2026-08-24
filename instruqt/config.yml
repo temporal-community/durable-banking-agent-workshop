@@ -8,8 +8,6 @@ containers:
   - 5000
   - 8000
   - 8001
-  - 8080
-  - 8081
   - 8233
 secrets:
 - name: OPENAI_API_KEY
