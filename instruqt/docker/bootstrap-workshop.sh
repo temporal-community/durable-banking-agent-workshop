@@ -65,11 +65,24 @@ for i in $(seq 1 60); do
     sleep 1
 done
 
-# 5. Bridge the secret into the attendee's shell. Instruqt injects secrets
-#    into lifecycle scripts only, so any worker/uvicorn process the attendee
-#    starts from a terminal would not see it otherwise.
+# 5. Bridge the secret and the proxy/Temporal env into the attendee's shell.
+#    Appended to /root/.bashrc, NOT set as a container-wide Docker ENV and
+#    NOT appended to /etc/bash.bashrc (which returns early for non-interactive
+#    shells). A container-wide ENV would also reach Instruqt's own internal
+#    agent process that backs the terminal/code-editor tabs - routing ITS
+#    authenticated calls through mitmproxy's TLS interception breaks its
+#    session ("Unauthorized" on those tabs). /root/.bashrc is explicitly
+#    sourced by every one of our own lifecycle scripts before they launch
+#    anything with nohup, so app processes still get these vars; Instruqt's
+#    agent, which never sources our .bashrc, never sees them.
 cat >> /root/.bashrc <<BASHRC
 export OPENAI_API_KEY="${OPENAI_API_KEY}"
+export TEMPORAL_ADDRESS="127.0.0.1:7233"
+export HTTP_PROXY="http://127.0.0.1:8888"
+export HTTPS_PROXY="http://127.0.0.1:8888"
+export NO_PROXY="127.0.0.1,localhost"
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+export REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 BASHRC
 
 touch /root/.workshop-bootstrapped

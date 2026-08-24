@@ -83,19 +83,18 @@ COPY instruqt/docker/bootstrap-workshop.sh /opt/bootstrap-workshop.sh
 RUN chmod +x /opt/bootstrap-workshop.sh
 
 # ── 8. Shell environment ─────────────────────────────────────────────────────
-# These have to be Docker ENV, not appended to /etc/bash.bashrc: Debian's
-# /etc/bash.bashrc starts with `[ -z "${PS1-}" ] && return`, so any
-# non-interactive shell (every nohup'd process a lifecycle script starts)
-# would source it, hit that guard, and never reach exports appended below it.
-# ENV applies to every process unconditionally, interactive or not. (PATH
-# already includes the Temporal CLI from step 3.)
-ENV TEMPORAL_ADDRESS="127.0.0.1:7233"
-ENV HTTP_PROXY="http://127.0.0.1:8888"
-ENV HTTPS_PROXY="http://127.0.0.1:8888"
-ENV NO_PROXY="127.0.0.1,localhost"
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-
+# TEMPORAL_ADDRESS/HTTP_PROXY/HTTPS_PROXY/etc are deliberately NOT Docker ENV:
+# a container-wide ENV applies to every process, including Instruqt's own
+# internal agent that backs terminal/code-editor tabs. Routing that agent's
+# own authenticated calls through mitmproxy's TLS interception breaks its
+# session, which surfaces as "Unauthorized" on the Editor/terminal tabs while
+# type: service tabs (a plain external port-proxy, untouched by anything
+# inside the container) keep working. Instead these get appended directly to
+# /root/.bashrc (bootstrap-workshop.sh does this, alongside OPENAI_API_KEY) -
+# NOT /etc/bash.bashrc, which returns early for non-interactive shells. Every
+# lifecycle script explicitly sources /root/.bashrc before launching anything
+# with nohup, so app processes still get these vars; Instruqt's agent, which
+# never sources our .bashrc, never sees them.
 RUN echo '[ -f /usr/share/bash-completion/bash_completion ] && . /usr/share/bash-completion/bash_completion' >> /etc/bash.bashrc
 
 WORKDIR /root
