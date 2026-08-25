@@ -51,4 +51,9 @@ echo "       confirm the balance did not move twice."
 
 echo ""
 echo "Automated: ${PASS}/2 confirmed. Items 3-4 always require a manual look at the Temporal UI."
-exit 0
+
+if [[ "${PASS}" -ge 2 ]]; then
+    exit 0
+else
+    exit 1
+fi

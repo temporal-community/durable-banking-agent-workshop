@@ -10,4 +10,4 @@ containers:
   - 8001
   - 8233
 secrets:
-- name: OPENAI_API_KEY
+- name: TEMPORAL_LITELLM_BROKER_SECRET
