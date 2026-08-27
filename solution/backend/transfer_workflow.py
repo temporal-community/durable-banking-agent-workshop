@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import asin, cos, radians, sin, sqrt
 
 from temporalio import workflow
@@ -93,6 +93,11 @@ class TransferWorkflow:
             a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
             distance_km = 2 * EARTH_RADIUS_KM * asin(sqrt(a))
             last_at = datetime.fromisoformat(last_at_iso)
+            if last_at.tzinfo is None:
+                # The model round-trips this timestamp through its own tool-call arguments and
+                # sometimes drops the UTC offset when reformatting it; every timestamp this
+                # workflow ever produces is UTC, so a naive one can only mean that.
+                last_at = last_at.replace(tzinfo=timezone.utc)
             elapsed_hours = max((workflow.now() - last_at).total_seconds() / 3600, 1e-6)
             return (
                 f"{distance_km:.0f} km in {elapsed_hours:.2f} hours, "
