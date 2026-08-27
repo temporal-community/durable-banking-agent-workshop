@@ -98,18 +98,25 @@ class TransferWorkflow:
         if sender["balance"] < amount:
             raise ApplicationError("insufficient funds", non_retryable=True)
 
+        # The account's own last-transaction location/time are already known here - captured by
+        # closure instead of asking the model to relay them back through this tool's arguments.
+        # It had to relay an ISO timestamp string that way before, and LLMs are not reliable about
+        # preserving one byte-for-byte (dropping the UTC offset, garbling the format entirely);
+        # each variant surfaced as a different "repeated tool errors" fraud decline. Only new_lat/
+        # new_lon are still model-supplied, since those come from its own geolocate_ip call in the
+        # same turn - plain floats are far less prone to this than a full formatted timestamp.
+        last_lat = sender["last_location"]["lat"]
+        last_lon = sender["last_location"]["lon"]
+        last_at_iso = sender["last_transaction_at"]
+
         @function_tool
-        def compute_travel_metrics(
-            last_lat: float, last_lon: float, last_at_iso: str, new_lat: float, new_lon: float
-        ) -> str:
-            """Compute distance, elapsed time and implied speed between two transactions.
+        def compute_travel_metrics(new_lat: float, new_lon: float) -> str:
+            """Compute distance, elapsed time and implied speed from the account's last
+            transaction to this one.
 
             Args:
-                last_lat: Latitude of the account's last transaction.
-                last_lon: Longitude of the account's last transaction.
-                last_at_iso: ISO timestamp of the account's last transaction.
-                new_lat: Latitude of this transaction.
-                new_lon: Longitude of this transaction.
+                new_lat: Latitude of this transaction, from the geolocation tool.
+                new_lon: Longitude of this transaction, from the geolocation tool.
             """
             return travel_metrics_str(last_lat, last_lon, last_at_iso, new_lat, new_lon, workflow.now())
 

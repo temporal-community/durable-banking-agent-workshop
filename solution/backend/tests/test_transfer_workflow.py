@@ -48,3 +48,14 @@ def test_travel_metrics_same_point_is_zero_distance():
     result = travel_metrics_str(*NY, "2026-01-01T00:00:00+00:00", *NY, NOW)
     distance_km = int(result.split(" km")[0])
     assert distance_km == 0
+
+
+# Note: the naive-timestamp fix above stopped one manifestation of "repeated tool errors" on a
+# real transfer, but the same symptom recurred with a different malformed value the model relayed.
+# The actual fix for the bug class is architectural, in transfer_workflow.py itself: the
+# compute_travel_metrics tool no longer accepts last_lat/last_lon/last_at_iso as model-supplied
+# arguments at all - they're captured by closure from the account data the workflow already
+# fetched, so the model can no longer garble them in transit. Only new_lat/new_lon (plain floats
+# from the model's own geolocate_ip call in the same turn) are still relayed. That change can't be
+# unit tested without a full Temporal workflow sandbox (compute_travel_metrics is a nested closure
+# inside TransferWorkflow.run); it's verified instead via instruqt track test end-to-end.
