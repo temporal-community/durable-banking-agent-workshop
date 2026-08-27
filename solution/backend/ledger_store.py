@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import json
 from pathlib import Path
 
@@ -7,6 +9,24 @@ from pathlib import Path
 # whole tree it runs from, and a ledger.json here would trigger a restart on
 # every transfer.
 LEDGER_PATH = Path("/tmp/durable-banking-ledger.json")
+LOCK_PATH = Path("/tmp/durable-banking-ledger.lock")
+
+
+@contextlib.contextmanager
+def _locked():
+    # Temporal can run activities concurrently within one worker process, and this store is a
+    # single JSON file with no other concurrency control: without this lock, two concurrent
+    # apply_transfer calls can each read the same on-disk state before either writes back,
+    # silently losing one of the two updates. An advisory flock on a sidecar file serializes the
+    # read-modify-write section; the sandbox this runs in is always a single Linux container, so a
+    # plain fcntl lock (no cross-platform fallback) is sufficient.
+    LOCK_PATH.touch(exist_ok=True)
+    with open(LOCK_PATH, "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 DEFAULT_STATE = {
     "accounts": {
@@ -42,13 +62,28 @@ def reset() -> None:
 
 
 def get_account(account_id: str) -> dict:
-    return _load()["accounts"][account_id]
+    with _locked():
+        return _load()["accounts"][account_id]
 
 
 def apply_transfer(
     *, workflow_id: str, from_account: str, to_account: str, amount: float, new_location: dict, new_at: str
 ) -> dict:
     """Debit/credit the ledger, keyed on workflow_id so a resumed run can't double-apply."""
+    with _locked():
+        return _apply_transfer_locked(
+            workflow_id=workflow_id,
+            from_account=from_account,
+            to_account=to_account,
+            amount=amount,
+            new_location=new_location,
+            new_at=new_at,
+        )
+
+
+def _apply_transfer_locked(
+    *, workflow_id: str, from_account: str, to_account: str, amount: float, new_location: dict, new_at: str
+) -> dict:
     state = _load()
     if workflow_id in state["applied_workflow_ids"]:
         return state["accounts"][from_account]

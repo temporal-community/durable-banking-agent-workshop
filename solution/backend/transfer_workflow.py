@@ -43,6 +43,29 @@ exactly as returned by the geolocation tool.
 """
 
 
+def travel_metrics_str(
+    last_lat: float, last_lon: float, last_at_iso: str, new_lat: float, new_lon: float, now: datetime
+) -> str:
+    """Pure distance/elapsed-time/speed math, extracted from the workflow's function-tool closure
+    so it's testable without a workflow sandbox. `now` is passed in rather than read internally
+    since the caller inside the workflow must use workflow.now(), not datetime.now()."""
+    lat1, lon1, lat2, lon2 = map(radians, (last_lat, last_lon, new_lat, new_lon))
+    dlat, dlon = lat2 - lat1, lon2 - lon1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    distance_km = 2 * EARTH_RADIUS_KM * asin(sqrt(a))
+    last_at = datetime.fromisoformat(last_at_iso)
+    if last_at.tzinfo is None:
+        # The model round-trips this timestamp through its own tool-call arguments and sometimes
+        # drops the UTC offset when reformatting it; every timestamp this workflow ever produces
+        # is UTC, so a naive one can only mean that.
+        last_at = last_at.replace(tzinfo=timezone.utc)
+    elapsed_hours = max((now - last_at).total_seconds() / 3600, 1e-6)
+    return (
+        f"{distance_km:.0f} km in {elapsed_hours:.2f} hours, "
+        f"implying {distance_km / elapsed_hours:.0f} km/h"
+    )
+
+
 class FraudDecision(BaseModel):
     approve: bool
     reason: str
@@ -88,21 +111,7 @@ class TransferWorkflow:
                 new_lat: Latitude of this transaction.
                 new_lon: Longitude of this transaction.
             """
-            lat1, lon1, lat2, lon2 = map(radians, (last_lat, last_lon, new_lat, new_lon))
-            dlat, dlon = lat2 - lat1, lon2 - lon1
-            a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-            distance_km = 2 * EARTH_RADIUS_KM * asin(sqrt(a))
-            last_at = datetime.fromisoformat(last_at_iso)
-            if last_at.tzinfo is None:
-                # The model round-trips this timestamp through its own tool-call arguments and
-                # sometimes drops the UTC offset when reformatting it; every timestamp this
-                # workflow ever produces is UTC, so a naive one can only mean that.
-                last_at = last_at.replace(tzinfo=timezone.utc)
-            elapsed_hours = max((workflow.now() - last_at).total_seconds() / 3600, 1e-6)
-            return (
-                f"{distance_km:.0f} km in {elapsed_hours:.2f} hours, "
-                f"implying {distance_km / elapsed_hours:.0f} km/h"
-            )
+            return travel_metrics_str(last_lat, last_lon, last_at_iso, new_lat, new_lon, workflow.now())
 
         agent = Agent(
             name="FraudInvestigator",
