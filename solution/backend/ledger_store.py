@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import fcntl
 import json
+import os
 from pathlib import Path
 
 # Deliberately outside this project directory: uvicorn --reload watches the
@@ -54,7 +55,14 @@ def _load() -> dict:
 
 
 def _save(state: dict) -> None:
-    LEDGER_PATH.write_text(json.dumps(state, indent=2))
+    # Written to a temp file and renamed into place, not written directly: a plain write_text()
+    # truncates the target file first, so killing the worker mid-write (the assignment's own
+    # "pkill -9 the worker mid-transfer" crash demo) can leave a half-written, unparseable ledger
+    # that then 500s every future read - not just the interrupted one. os.rename is atomic on the
+    # same filesystem, so a reader only ever sees the old file or the fully-written new one.
+    tmp_path = LEDGER_PATH.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(state, indent=2))
+    os.rename(tmp_path, LEDGER_PATH)
 
 
 def reset() -> None:

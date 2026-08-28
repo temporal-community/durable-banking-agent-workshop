@@ -97,7 +97,15 @@ public final class LedgerStore {
     }
 
     private static void save(State state) throws IOException {
-        Files.writeString(LEDGER_PATH, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(state));
+        // Written to a temp file and moved into place, not written directly: a plain writeString()
+        // truncates the target file first, so killing the worker mid-write (the assignment's own
+        // "pkill -9 the worker mid-transfer" crash demo) can leave a half-written, unparseable
+        // ledger that then 500s every future read - not just the interrupted one. ATOMIC_MOVE on
+        // the same filesystem means a reader only ever sees the old file or the fully-written one.
+        Path tmpPath = LEDGER_PATH.resolveSibling(LEDGER_PATH.getFileName() + ".tmp");
+        Files.writeString(tmpPath, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(state));
+        Files.move(tmpPath, LEDGER_PATH, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE);
     }
 
     public static void reset() {

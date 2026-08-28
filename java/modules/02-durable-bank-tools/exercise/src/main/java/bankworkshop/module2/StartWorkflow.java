@@ -9,7 +9,7 @@ import java.util.UUID;
 public final class StartWorkflow {
 
   public static void main(String[] args) {
-    String question = args.length > 0 ? args[0] : "What is the balance of account A?";
+    String question = args.length > 0 ? String.join(" ", args) : "What is the balance of account A?";
 
     WorkflowServiceStubs service =
         WorkflowServiceStubs.newServiceStubs(
