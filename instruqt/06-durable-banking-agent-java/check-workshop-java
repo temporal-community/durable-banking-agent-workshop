@@ -1,0 +1,62 @@
+#!/bin/bash
+# Best-effort checklist verification. Prints pass/fail per item, no score.
+# Relies on the suggested convention from assignment.md: task queue
+# "banking-transfer-tq-java", workflow IDs prefixed "transfer-". If a
+# participant used different names, this script cannot find their workflows
+# and says so. The always-on Solution preview runs on the isolated
+# "solution-preview-tq-java" queue (see WorkerMain.java), so it never
+# contaminates this count.
+set -uo pipefail
+
+PASS=0
+TOTAL=4
+
+echo "== Checklist =="
+
+# 1. At least one completed workflow exists on the expected task queue.
+COMPLETED=$(temporal workflow list \
+    --address 127.0.0.1:7233 \
+    --namespace default \
+    --query 'TaskQueue="banking-transfer-tq-java" AND ExecutionStatus="Completed"' \
+    --limit 5 2>/dev/null | grep -c "Completed" || true)
+
+if [[ "${COMPLETED}" -ge 1 ]]; then
+    echo "OK   [1/4] found a completed transfer workflow."
+    PASS=$((PASS + 1))
+else
+    echo "SKIP [1/4] no completed workflow found on task queue 'banking-transfer-tq-java'."
+    echo "     Start a transfer and let it finish, or verify manually if you used a different task queue name."
+fi
+
+# 2. A failed workflow whose failure message reads like a fraud decline.
+DECLINED=$(temporal workflow list \
+    --address 127.0.0.1:7233 \
+    --namespace default \
+    --query 'TaskQueue="banking-transfer-tq-java" AND ExecutionStatus="Failed"' \
+    --limit 20 2>/dev/null | grep -ic "Failed" || true)
+
+if [[ "${DECLINED}" -ge 1 ]]; then
+    echo "OK   [2/4] found failed workflow(s) - confirm in the Temporal UI they failed with"
+    echo "     non_retryable=True on a genuine fraud decline, and only one attempt was made."
+    PASS=$((PASS + 1))
+else
+    echo "SKIP [2/4] no failed workflow found. Trigger a spoofed impossible-travel transfer,"
+    echo "     then confirm by hand that it fails after exactly one activity attempt."
+fi
+
+# 3. Can't reliably detect a retry-in-progress after the fact - always manual.
+echo "MANUAL [3/4] toggle Geolocation off in the Network Control Panel mid-transfer and"
+echo "       confirm the geo-IP activity shows Retrying (not Failed) in the Temporal UI."
+
+# 4. Idempotency can't be verified without knowing the ledger's storage shape - manual.
+echo "MANUAL [4/4] re-run the same workflow ID's ledger-update activity (or replay it) and"
+echo "       confirm the balance did not move twice."
+
+echo ""
+echo "Automated: ${PASS}/2 confirmed. Items 3-4 always require a manual look at the Temporal UI."
+
+if [[ "${PASS}" -ge 2 ]]; then
+    exit 0
+else
+    exit 1
+fi

@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+COMPLETED=$(temporal workflow list \
+    --address 127.0.0.1:7233 \
+    --namespace default \
+    --query 'TaskQueue="durable-bank-tools-tq-java" AND ExecutionStatus="Completed"' \
+    --limit 1 2>/dev/null | grep -c "Completed" || true)
+
+if [[ "${COMPLETED}" -lt 1 ]]; then
+    echo "FAIL: No completed workflows on durable-bank-tools-tq-java. Start a workflow and wait for it to finish."
+    exit 1
+fi
+
+echo "OK: a workflow completed on durable-bank-tools-tq-java."
+exit 0

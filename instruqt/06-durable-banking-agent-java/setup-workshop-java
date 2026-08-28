@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euxo pipefail
+bash /opt/bootstrap-workshop.sh
+source /root/.workshop-env || true
+
+pkill -f "exec:java.*bank.hackathon.Main" || true
+pkill -f "exec:java.*bank.solution.ApiMain" || true
+pkill -f "exec:java.*bank.solution.WorkerMain" || true
+sleep 1
+
+# The solution stack runs the whole time, on its own port, so the Solution tab is live from the
+# moment the challenge loads - nothing to start by hand. Each backend serves its own frontend at
+# "/" (same origin, no CORS/cookie dance needed), so there's no separate frontend process to start
+# either. WorkerMain/ApiMain default to the isolated "solution-preview-tq-java" queue and port 8001
+# (overridable via TRANSFER_TASK_QUEUE/PORT), matching Python's TRANSFER_TASK_QUEUE/
+# solution-preview-tq split - the always-on preview never pollutes check-workshop's count of a
+# participant's own "banking-transfer-tq-java" workflows.
+cd /root/workshop/solution/backend
+nohup mvn -q exec:java -Dexec.mainClass=bank.solution.WorkerMain > /tmp/solution-preview-worker.log 2>&1 &
+sleep 8
+nohup mvn -q exec:java -Dexec.mainClass=bank.solution.ApiMain > /tmp/solution-preview-backend.log 2>&1 &
+
+# Wait for the preview backend to actually be listening before handing control back.
+for i in $(seq 1 60); do
+    if curl --fail --silent --output /dev/null "http://127.0.0.1:8001/accounts/A"; then
+        break
+    fi
+    sleep 1
+done
+
+echo "==> 03-durable-banking-agent ready. The Solution tab is already live."
+echo "    Start your own backend from the Backend terminal:"
+echo "    cd /root/workshop/hackathon/backend && mvn -q exec:java -Dexec.mainClass=bank.hackathon.Main"

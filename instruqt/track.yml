@@ -23,10 +23,12 @@ tags:
 - ai-agents
 - python
 - temporal
+- java
 owner: temporal
 developers:
 - shubham.londhe@temporal.io
 maintenance: true
+show_timer: true
 skipping_enabled: true
 idle_timeout: 8100
 timelimit: 8100
@@ -48,5 +50,5 @@ lab_config:
   hideStopButton: false
   default_layout: AssignmentLeft
   default_layout_sidebar_size: 33
-checksum: "17053733260343491915"
+checksum: "12673476355626242308"
 enhanced_loading: false

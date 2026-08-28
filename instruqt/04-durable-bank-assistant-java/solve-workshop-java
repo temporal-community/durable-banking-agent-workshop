@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euxo pipefail
+source /root/.workshop-env || true
+
+cp -rf /opt/workshop/modules/01-durable-bank-assistant/solution/. /root/workshop/modules/01-durable-bank-assistant/exercise/
+
+pkill -f "exec:java" || true
+sleep 1
+
+cd /root/workshop/modules/01-durable-bank-assistant/solution
+nohup mvn -q exec:java -Dexec.mainClass=bankworkshop.module1.Worker \
+    > /tmp/solve-01-durable-bank-assistant-worker.log 2>&1 &
+WORKER_PID=$!
+sleep 12
+
+timeout 120 mvn -q exec:java -Dexec.mainClass=bankworkshop.module1.StartWorkflow \
+    -Dexec.args="What is my account balance?" || true
+
+kill "${WORKER_PID}" 2>/dev/null || true
+pkill -f "exec:java" || true
+exit 0

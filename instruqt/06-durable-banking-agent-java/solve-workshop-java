@@ -1,0 +1,43 @@
+#!/bin/bash
+# Simulates a correctly-solved hackathon/backend for check-workshop's automated verification
+# (instruqt track test, or an explicit admin "solve" action) - never run by a real participant's
+# own exploration. Runs a second instance of solution/backend on the hackathon's own port 8000,
+# explicitly on the "banking-transfer-tq-java" convention a real solved hackathon/backend would
+# use. The always-on preview instance on port 8001 ("solution-preview-tq-java") is left running
+# untouched, since WorkerMain/ApiMain take PORT/TRANSFER_TASK_QUEUE overrides for exactly this.
+set -euxo pipefail
+source /root/.workshop-env || true
+
+pkill -f "exec:java.*bank.hackathon.Main" || true
+sleep 1
+
+# solution/backend serves its own frontend at "/" now, so standing in on port 8000 covers both
+# the API and the UI - no separate frontend process needed.
+cd /root/workshop/solution/backend
+TRANSFER_TASK_QUEUE=banking-transfer-tq-java nohup mvn -q exec:java -Dexec.mainClass=bank.solution.WorkerMain \
+    > /tmp/solve-03-worker.log 2>&1 &
+sleep 8
+TRANSFER_TASK_QUEUE=banking-transfer-tq-java PORT=8000 nohup mvn -q exec:java -Dexec.mainClass=bank.solution.ApiMain \
+    > /tmp/solve-03-backend.log 2>&1 &
+
+for i in $(seq 1 60); do
+    if curl --fail --silent --output /dev/null "http://127.0.0.1:8000/accounts/A"; then
+        break
+    fi
+    sleep 1
+done
+
+curl --fail --silent --show-error -X POST http://localhost:8000/transfer \
+    -H "Content-Type: application/json" \
+    -d '{"from_account": "A", "to_account": "B", "amount": 10, "spoof_location": null}' \
+    > /tmp/solve-03-transfer-ok.log 2>&1 || true
+sleep 20
+
+curl --fail --silent --show-error -X POST http://localhost:8000/transfer \
+    -H "Content-Type: application/json" \
+    -d '{"from_account": "A", "to_account": "B", "amount": 10, "spoof_location": "Sydney"}' \
+    > /tmp/solve-03-transfer-decline.log 2>&1 || true
+sleep 20
+
+echo "==> 03-durable-banking-agent solved: solution/backend is standing in for hackathon/backend on port 8000."
+exit 0

@@ -1,0 +1,9 @@
+#!/bin/bash
+# Track-level setup for the workshop-java container. Runs once when the
+# attendee enters the track from challenge 4. The actual bootstrap logic
+# lives in /opt/bootstrap-workshop.sh (baked into the java image) because
+# every java challenge's own setup-workshop-java also calls it: Instruqt's
+# per-challenge Preview feature skips track-level scripts, so a challenge
+# previewed standalone needs to bootstrap itself too.
+set -euo pipefail
+bash /opt/bootstrap-workshop.sh

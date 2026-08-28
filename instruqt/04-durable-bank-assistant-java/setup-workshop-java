@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euxo pipefail
+bash /opt/bootstrap-workshop.sh
+source /root/.workshop-env || true
+
+pkill -f "exec:java" || true
+sleep 1
+
+echo "==> 01-durable-bank-assistant ready."

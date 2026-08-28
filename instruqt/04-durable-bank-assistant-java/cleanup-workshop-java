@@ -1,0 +1,4 @@
+#!/bin/bash
+set -euo pipefail
+pkill -f "exec:java" || true
+sleep 1

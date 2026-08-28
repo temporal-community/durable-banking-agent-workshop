@@ -1,0 +1,8 @@
+#!/bin/bash
+set -euo pipefail
+# mvn's exec:java goal runs the launched class inside the Maven JVM itself
+# (no fork by default), so the process to kill is the "mvn ... exec:java"
+# invocation, not the Java class name.
+pkill -f "exec:java" || true
+pkill -f "temporal server" || true
+echo "Track cleanup: OK"
