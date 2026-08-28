@@ -6,16 +6,17 @@ teaser: A fraudster is spoofing locations to drain two accounts. Catch it, then 
 description: |-
   Ledger Bank's transfer service makes a real fraud call on every transfer: is this
   the same person who transacted last, or did they just teleport across the planet?
-  The call is made by an OpenAI Agent reasoning over geolocation and account history,
-  not a hardcoded rule.
+  The call is made by a model reasoning over geolocation and account history, not a
+  hardcoded rule.
 
   The bank's backend works, but it is fragile. A slow geo-IP lookup has no retry. A
   crashed process mid-transfer leaves the ledger inconsistent. Nothing records what
   happened.
 
-  You build the agent inside a Temporal workflow twice: once as a guided warm-up
+  You build this inside a Temporal workflow twice: once as a guided warm-up
   (modules 1-2), then once for real, temporalizing Ledger Bank's transfer path
-  without changing what it does for a customer.
+  without changing what it does for a customer. Available in Python (using the
+  OpenAI Agents SDK) and Java (using the OpenAI client directly) - pick one.
 icon: ""
 tags:
 - fintech
