@@ -207,6 +207,12 @@ them costs you nothing.
    (e.g. an aggressive `setInitialInterval` with no `setMaximumAttempts`) and watch what that does
    to the event history in the Temporal UI. Cheap to try, and the fastest way to feel why the
    default policy is a starting point, not a given.
+6. **Concurrent transfers.** Fire two simultaneous transfers from the same near-empty account. Does
+   your temporalized version still let the balance go negative? Temporal gives you crash recovery
+   and retries, but nothing about a workflow automatically serializes it against a *different*
+   workflow execution touching the same account - that's still on you. Look at how `solution/`'s
+   `LedgerStore.applyTransfer` re-validates the balance *inside* its lock, not just earlier in the
+   workflow, before it debits.
 
 ## Limits of this sandbox
 
