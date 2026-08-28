@@ -2,7 +2,7 @@
 slug: durable-bank-tools
 id: qmgtq1hq57vf
 type: challenge
-title: 'Module 2: Durable Bank Tools'
+title: 'Module 2: Durable Bank Tools (Python)'
 teaser: One real tool, wired in as an activity. Watch the agentic loop show up in
   event history.
 notes:

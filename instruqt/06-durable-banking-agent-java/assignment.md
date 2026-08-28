@@ -200,6 +200,22 @@ them costs you nothing.
    workflow and watch it react via `temporal workflow signal`.
 3. **Cross-currency transfer.** Add a third account in a different currency and a conversion step
    in the transfer workflow.
+4. **Queryable audit trail.** `Ledger.incidents` is just a list today. Expose it through a Temporal
+   `@QueryMethod` instead of a REST endpoint, so the incident history comes from the workflow's own
+   state, not a side channel that can drift from it.
+5. **Break your own retries on purpose.** Misconfigure the fraud-check activity's `RetryOptions`
+   (e.g. an aggressive `setInitialInterval` with no `setMaximumAttempts`) and watch what that does
+   to the event history in the Temporal UI. Cheap to try, and the fastest way to feel why the
+   default policy is a starting point, not a given.
+
+## Limits of this sandbox
+
+A few ideas come up every hackathon that don't fit this environment - know before you spend time:
+in-memory/single-file storage, not a real database (no journaling, no multi-row transactions); one
+sandbox per participant, so no multi-user or shared-dashboard demo; a fixed, small list of
+spoofable geo-IPs (real-world IP diversity isn't available from here); a shared model behind a
+per-participant budget, not a place to A/B multiple models; and no auth layer at all, so
+role-based approval flows aren't buildable as-is.
 
 ## Without Temporal
 

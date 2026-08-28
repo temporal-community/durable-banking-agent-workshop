@@ -2,7 +2,7 @@
 slug: durable-bank-assistant
 id: xylgyugxvrgl
 type: challenge
-title: 'Module 1: A Durable Bank Assistant'
+title: 'Module 1: A Durable Bank Assistant (Python)'
 teaser: An OpenAI Agents SDK agent inside a Temporal workflow. Durable before it has
   a single tool.
 notes:
