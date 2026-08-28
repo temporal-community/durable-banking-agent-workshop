@@ -14,10 +14,10 @@ sleep 1
 # solution/backend serves its own frontend at "/" now, so standing in on port 8000 covers both
 # the API and the UI - no separate frontend process needed.
 cd /root/workshop/solution/backend
-TRANSFER_TASK_QUEUE=banking-transfer-tq-java nohup mvn -q exec:java -Dexec.mainClass=bank.solution.WorkerMain \
+TRANSFER_TASK_QUEUE=banking-transfer-tq-java nohup mvn -q compile exec:java -Dexec.mainClass=bank.solution.WorkerMain \
     > /tmp/solve-03-worker.log 2>&1 &
 sleep 8
-TRANSFER_TASK_QUEUE=banking-transfer-tq-java PORT=8000 nohup mvn -q exec:java -Dexec.mainClass=bank.solution.ApiMain \
+TRANSFER_TASK_QUEUE=banking-transfer-tq-java PORT=8000 nohup mvn -q compile exec:java -Dexec.mainClass=bank.solution.ApiMain \
     > /tmp/solve-03-backend.log 2>&1 &
 
 for i in $(seq 1 60); do

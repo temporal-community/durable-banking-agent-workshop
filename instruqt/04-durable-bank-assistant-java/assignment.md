@@ -98,7 +98,7 @@ tab and do the `TODO`.
 Click the [button label="Worker" background="#444CE7"](tab-0) terminal.
 
 ```bash,run
-mvn -q exec:java -Dexec.mainClass=bankworkshop.module1.Worker
+mvn -q compile exec:java -Dexec.mainClass=bankworkshop.module1.Worker
 ```
 
 > First run resolves Maven dependencies and can take noticeably longer than a warm run; later
@@ -112,7 +112,7 @@ Leave it and move on.
 Click the [button label="Starter" background="#444CE7"](tab-1) terminal.
 
 ```bash,run
-mvn -q exec:java -Dexec.mainClass=bankworkshop.module1.StartWorkflow -Dexec.args="What is my account balance?"
+mvn -q compile exec:java -Dexec.mainClass=bankworkshop.module1.StartWorkflow -Dexec.args="What is my account balance?"
 ```
 
 ## Watch the Event History
@@ -147,7 +147,7 @@ Toggle **OpenAI** back on. The next attempt succeeds and the same execution fini
 ## Ask It Something It Can't Know
 
 ```bash,run
-mvn -q exec:java -Dexec.mainClass=bankworkshop.module1.StartWorkflow -Dexec.args="What is the balance of account A?"
+mvn -q compile exec:java -Dexec.mainClass=bankworkshop.module1.StartWorkflow -Dexec.args="What is the balance of account A?"
 ```
 
 It either guesses or admits it has no way to look that up. It has no tools yet.

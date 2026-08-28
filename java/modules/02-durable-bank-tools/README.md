@@ -44,8 +44,8 @@ cd exercise
 Fill in the `TODO` in `BankAssistantWorkflowImpl.java`, then:
 
 ```bash
-mvn -q exec:java -Dexec.mainClass=bankworkshop.module2.Worker           # terminal 2, stays running
-mvn -q exec:java -Dexec.mainClass=bankworkshop.module2.StartWorkflow \
+mvn -q compile exec:java -Dexec.mainClass=bankworkshop.module2.Worker           # terminal 2, stays running
+mvn -q compile exec:java -Dexec.mainClass=bankworkshop.module2.StartWorkflow \
     -Dexec.args="What is the balance of account A?"                    # terminal 3
 ```
 

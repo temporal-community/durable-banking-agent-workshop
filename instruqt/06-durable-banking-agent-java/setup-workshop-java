@@ -16,9 +16,9 @@ sleep 1
 # solution-preview-tq split - the always-on preview never pollutes check-workshop's count of a
 # participant's own "banking-transfer-tq-java" workflows.
 cd /root/workshop/solution/backend
-nohup mvn -q exec:java -Dexec.mainClass=bank.solution.WorkerMain > /tmp/solution-preview-worker.log 2>&1 &
+nohup mvn -q compile exec:java -Dexec.mainClass=bank.solution.WorkerMain > /tmp/solution-preview-worker.log 2>&1 &
 sleep 8
-nohup mvn -q exec:java -Dexec.mainClass=bank.solution.ApiMain > /tmp/solution-preview-backend.log 2>&1 &
+nohup mvn -q compile exec:java -Dexec.mainClass=bank.solution.ApiMain > /tmp/solution-preview-backend.log 2>&1 &
 
 # Wait for the preview backend to actually be listening before handing control back.
 for i in $(seq 1 60); do
@@ -30,4 +30,4 @@ done
 
 echo "==> 03-durable-banking-agent ready. The Solution tab is already live."
 echo "    Start your own backend from the Backend terminal:"
-echo "    cd /root/workshop/hackathon/backend && mvn -q exec:java -Dexec.mainClass=bank.hackathon.Main"
+echo "    cd /root/workshop/hackathon/backend && mvn -q compile exec:java -Dexec.mainClass=bank.hackathon.Main"

@@ -90,7 +90,7 @@ tab and do the `TODO`. It looks the same as module 1, plus the tool-call branch.
 Click the [button label="Worker" background="#444CE7"](tab-0) terminal.
 
 ```bash,run
-mvn -q exec:java -Dexec.mainClass=bankworkshop.module2.Worker
+mvn -q compile exec:java -Dexec.mainClass=bankworkshop.module2.Worker
 ```
 
 > First run resolves Maven dependencies and can take noticeably longer than a warm run.
@@ -100,7 +100,7 @@ mvn -q exec:java -Dexec.mainClass=bankworkshop.module2.Worker
 Click the [button label="Starter" background="#444CE7"](tab-1) terminal.
 
 ```bash,run
-mvn -q exec:java -Dexec.mainClass=bankworkshop.module2.StartWorkflow -Dexec.args="What is the balance of account A?"
+mvn -q compile exec:java -Dexec.mainClass=bankworkshop.module2.StartWorkflow -Dexec.args="What is the balance of account A?"
 ```
 
 ## Watch the Event History

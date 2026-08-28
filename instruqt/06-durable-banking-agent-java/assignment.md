@@ -72,7 +72,7 @@ enhanced_loading: null
 
 > [!NOTE]
 > **Your tabs.**
-> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `mvn -q exec:java -Dexec.mainClass=bank.hackathon.Main` here. This same process serves both the API and the transfer UI, so the Hackathon Frontend tab needs it running too.
+> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `mvn -q compile exec:java -Dexec.mainClass=bank.hackathon.Main` here. This same process serves both the API and the transfer UI, so the Hackathon Frontend tab needs it running too.
 > - [button label="Hackathon Frontend" background="#444CE7"](tab-1) is the live transfer UI for the code you're changing: two accounts, a transfer form, and an incident log.
 > - [button label="Solution Frontend" background="#444CE7"](tab-2) is the same UI against the finished reference. It's live from the start, nothing to run.
 > - [button label="Temporal UI" background="#444CE7"](tab-3) is the event history once you have a workflow. The solution's workflows are already there.
@@ -144,7 +144,7 @@ its own isolated queue (`solution-preview-tq-java`), so it never shows up in thi
 
 ```bash
 # Backend.
-cd hackathon/backend && mvn -q exec:java -Dexec.mainClass=bank.hackathon.Main
+cd hackathon/backend && mvn -q compile exec:java -Dexec.mainClass=bank.hackathon.Main
 ```
 
 ```bash
@@ -153,8 +153,8 @@ cd hackathon/backend && mvn -q exec:java -Dexec.mainClass=bank.hackathon.Main
 # ApiMain hardcodes port 8001, so a second copy would conflict with the always-on preview; stop
 # the preview's ApiMain first if you want to run your own on the same port.
 cd solution/backend
-mvn -q exec:java -Dexec.mainClass=bank.solution.WorkerMain &
-mvn -q exec:java -Dexec.mainClass=bank.solution.ApiMain
+mvn -q compile exec:java -Dexec.mainClass=bank.solution.WorkerMain &
+mvn -q compile exec:java -Dexec.mainClass=bank.solution.ApiMain
 ```
 
 > First Maven dependency resolution in this challenge can take noticeably longer than a warm run;
