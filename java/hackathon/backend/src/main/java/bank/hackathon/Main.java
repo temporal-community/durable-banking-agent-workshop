@@ -14,8 +14,24 @@ import io.javalin.http.HttpStatus;
 
 /** Plain, fragile HTTP backend - no retries, no idempotency, in-memory state. Ports main.py. */
 public final class Main {
-    private static final Path FRONTEND_INDEX = Path.of(
-            System.getProperty("frontend.index", "../../../hackathon/frontend/index.html"));
+    // Two different working-directory depths reach this file depending on how it's run: local
+    // dev runs "cd java/hackathon/backend" from the repo root (3 levels up to "hackathon/"), while
+    // the shipped sandbox flattens the "java/" prefix away, staging code at
+    // /root/workshop/hackathon/backend (1 level up to "hackathon/"). Try both rather than picking
+    // one and breaking the other environment.
+    private static final Path FRONTEND_INDEX = resolveFrontendIndex();
+
+    private static Path resolveFrontendIndex() {
+        String override = System.getProperty("frontend.index");
+        if (override != null) {
+            return Path.of(override);
+        }
+        Path shipped = Path.of("../frontend/index.html");
+        if (Files.exists(shipped)) {
+            return shipped;
+        }
+        return Path.of("../../../hackathon/frontend/index.html");
+    }
 
     private final Ledger ledger = new Ledger();
     private final FraudCheck fraudCheck = new FraudCheck();

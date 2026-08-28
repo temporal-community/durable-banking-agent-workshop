@@ -19,8 +19,24 @@ import io.temporal.serviceclient.WorkflowServiceStubsOptions;
 /** Same-origin API + frontend, mirroring solution/backend/main.py. POST /transfer starts the
  * workflow and returns immediately; GET /transfer/{id} polls status. */
 public final class ApiMain {
-    private static final Path FRONTEND_INDEX = Path.of(
-            System.getProperty("frontend.index", "../../../solution/frontend/index.html"));
+    // Two different working-directory depths reach this file depending on how it's run: local
+    // dev runs "cd java/solution/backend" from the repo root (3 levels up to "solution/"), while
+    // the shipped sandbox flattens the "java/" prefix away, staging code at
+    // /root/workshop/solution/backend (1 level up to "solution/"). Try both rather than picking
+    // one and breaking the other environment.
+    private static final Path FRONTEND_INDEX = resolveFrontendIndex();
+
+    private static Path resolveFrontendIndex() {
+        String override = System.getProperty("frontend.index");
+        if (override != null) {
+            return Path.of(override);
+        }
+        Path shipped = Path.of("../frontend/index.html");
+        if (Files.exists(shipped)) {
+            return shipped;
+        }
+        return Path.of("../../../solution/frontend/index.html");
+    }
 
     private static WorkflowClient client;
 
