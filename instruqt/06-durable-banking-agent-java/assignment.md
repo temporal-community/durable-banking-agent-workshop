@@ -58,11 +58,6 @@ tabs:
   type: code
   hostname: workshop-java
   path: /root/workshop/hackathon
-- id: hm0mfyqqxh4w
-  title: Solution
-  type: code
-  hostname: workshop-java
-  path: /root/workshop/solution
 difficulty: advanced
 timelimit: 10800
 enhanced_loading: null
@@ -78,7 +73,8 @@ enhanced_loading: null
 > - [button label="Temporal UI" background="#444CE7"](tab-3) is the event history once you have a workflow. The solution's workflows are already there.
 > - [button label="Network Control Panel" background="#444CE7"](tab-4) turns OpenAI and the geolocation service off, on demand.
 > - [button label="Editor" background="#444CE7"](tab-5) is `hackathon/`, the code you're changing.
-> - [button label="Solution" background="#444CE7"](tab-6) is the finished reference, `solution/`. Read it if you're stuck, but don't just copy it in. The point is building it.
+>   `solution/` is on disk too (read it from this terminal if you're stuck), just not its own tab -
+>   don't just copy it in. The point is building it.
 
 ## The Incident
 
