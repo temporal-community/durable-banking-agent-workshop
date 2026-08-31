@@ -133,7 +133,32 @@ Temporalize `hackathon/backend/` without changing the product:
 for the result. `hackathon/` and `solution/` are not required to end up identical; they just have
 to behave the same way from the outside. `solution/` is already running the whole time on its own
 port, the [button label="Solution Frontend" background="#444CE7"](tab-2) tab is it, nothing to
-start.
+start. No frontend code to write either way - `hackathon/frontend/` already talks to a `POST
+/transfer` + poll-for-status API shape, whatever backend answers it.
+
+<details>
+<summary>Stuck on where to start? Click for the shape of a solution</summary>
+
+You don't have to end up with these exact files, but this is the shape `solution/backend/` uses -
+useful if you're new to Temporal and not sure what "turn it into activities" means in practice:
+
+- **`BankActivities.java` / `BankActivitiesImpl.java`** - the activity interface and its
+  implementation: `geolocateIp`, `getAccountForTransfer`, `checkFraud`, `applyTransferToLedger`.
+  Each one wraps a single risky call (an HTTP request, an OpenAI call, a ledger read/write) that
+  needs its own retry policy - that's the whole reason it's an activity and not just a method call.
+- **`TransferWorkflow.java` / `TransferWorkflowImpl.java`** - the workflow interface and its
+  implementation. It orchestrates, in order: fetch both accounts, geolocate the request, compute
+  travel distance/time (plain deterministic code run *inside* the workflow, not an activity - no
+  I/O, so no need for one), call `checkFraud`, then apply the ledger update.
+- **`WorkerMain.java`** - registers the workflow and all the activities on one task queue, then
+  polls it. Runs in its own terminal for the whole challenge.
+- **`ApiMain.java`** - the Javalin app. `POST /transfer` starts the workflow and returns a workflow
+  ID right away instead of blocking; `GET /transfer/{id}` lets the frontend poll for the result.
+
+You don't need to write `LedgerStore.java` from scratch - the file-locking/idempotency logic in
+there isn't the lesson this challenge is teaching, so copying or closely following
+`solution/backend/.../LedgerStore.java` is expected, not cheating.
+</details>
 
 If you want `check-workshop`'s automated checks to find your workflows, use the task queue
 `banking-transfer-tq-java` and workflow IDs prefixed `transfer-`. Not required. Without it, verify
