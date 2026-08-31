@@ -9,6 +9,19 @@ while a fraudster keeps trying to drain them from spoofed locations around the w
 2 build up the agent. Module 3 hands you a working but fragile transfer service and asks you to make
 it durable without changing what it does.
 
+Available in Python and Java, side by side - see [Java version](#java-version) below.
+
+## Repository layout
+
+```
+modules/01-durable-bank-assistant/   Module 1 (Python): exercise/ + solution/
+modules/02-durable-bank-tools/       Module 2 (Python): exercise/ + solution/
+hackathon/                           Module 3's starting point: a fragile transfer service
+solution/                            Module 3's fully temporalized reference
+java/                                The same three lessons, in Java (each module has its own README)
+instruqt/                            The Instruqt track: challenges, sandbox Dockerfiles, scripts
+```
+
 ## Modules
 
 | Module | What's new | Read this first |
