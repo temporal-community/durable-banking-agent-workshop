@@ -114,6 +114,8 @@ happened, the credit happened, both, or neither. Nothing recorded what was in fl
 Temporalize `hackathon/backend/` without changing the product:
 
 - Wrap the transfer in a Temporal workflow, started from the `POST /transfer` endpoint.
+- `hackathon/backend` has no worker process yet - a workflow only runs once something is polling
+  its task queue. Add one (`worker.py`, or however you name it) and run it alongside the API.
 - Turn the geo-IP lookup, the fraud-check agent call, and the ledger update into `@activity.defn`
   activities. Build the fraud-check `Agent` inside the workflow with `activity_as_tool`-wrapped
   tools, the same pattern as modules 1 and 2, not a plain-Python `Agent` outside Temporal.

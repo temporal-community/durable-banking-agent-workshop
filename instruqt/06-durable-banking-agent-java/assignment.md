@@ -115,6 +115,8 @@ happened, the credit happened, both, or neither. Nothing recorded what was in fl
 Temporalize `hackathon/backend/` without changing the product:
 
 - Wrap the transfer in a Temporal workflow, started from the `POST /transfer` endpoint.
+- `hackathon/backend` has no worker process yet - a workflow only runs once something is polling
+  its task queue. Add one (`WorkerMain.java`, or however you name it) and run it alongside the API.
 - Turn the geo-IP lookup, the fraud-check model call, and the ledger update into
   `@ActivityMethod`-annotated activities. Build the fraud-check call inside an activity the
   workflow invokes explicitly - the same explicit activity boundary as modules 1 and 2, since Java
