@@ -17,7 +17,7 @@ ENV PYTHONUNBUFFERED=1
 # ── 1. System packages ──────────────────────────────────────────────────────
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        curl ca-certificates git procps \
+        curl ca-certificates git procps vim \
     && rm -rf /var/lib/apt/lists/*
 
 # ── 2. uv ────────────────────────────────────────────────────────────────────

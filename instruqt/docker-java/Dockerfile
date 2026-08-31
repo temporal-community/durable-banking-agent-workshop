@@ -16,7 +16,7 @@ ENV WORKSPACE=/opt/workshop
 # ── 1. System packages ──────────────────────────────────────────────────────
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        curl ca-certificates git procps python3 python3-venv maven \
+        curl ca-certificates git procps python3 python3-venv maven vim \
     && rm -rf /var/lib/apt/lists/*
 
 # ── 2. Maven local repo warm-up moved to step 5 (needs source present) ──────
