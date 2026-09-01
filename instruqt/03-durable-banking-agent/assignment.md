@@ -23,12 +23,12 @@ notes:
     Fill in 3 marked TODOs in `transfer_workflow.py`. Everything else -
     the worker, the activities, the API - is already wired up.
 tabs:
-- id: s1vqjp8uopga
+- id: 6ble8jw5hggl
   title: Worker
   type: terminal
   hostname: workshop
   workdir: /root/workshop/hackathon/backend
-- id: urcthteufc3r
+- id: y70sljifynlc
   title: Backend
   type: terminal
   hostname: workshop
