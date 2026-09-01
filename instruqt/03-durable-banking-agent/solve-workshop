@@ -1,9 +1,9 @@
 #!/bin/bash
 # Simulates a correctly-solved hackathon/backend for check-workshop's automated verification
 # (instruqt track test, or an explicit admin "solve" action) - never run by a real participant's
-# own exploration. Runs a second instance of solution/backend on the hackathon's own port 8000,
-# explicitly using the "banking-transfer-tq" convention a real solved hackathon/backend would use.
-# The always-on preview instance on port 8001 ("solution-preview-tq") is left running untouched.
+# own exploration. Runs solution/backend (the reference, all 3 TODOs already filled in) on the
+# hackathon's own port 8000, explicitly using the "banking-transfer-tq" convention hackathon/
+# backend's own shipped worker.py/main.py already default to.
 set -euxo pipefail
 source /root/.bashrc || true
 

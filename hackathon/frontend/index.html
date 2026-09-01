@@ -119,7 +119,7 @@
     <h2 style="font-size:14px; margin-top:0;">Incident log</h2>
     <table>
       <thead>
-        <tr><th>Time</th><th>From → To</th><th>Amount</th><th>Location</th><th>Verdict</th><th>Reason</th></tr>
+        <tr><th>Time</th><th>Workflow</th><th>From → To</th><th>Amount</th><th>Status</th><th>Detail</th></tr>
       </thead>
       <tbody id="incidents-body"></tbody>
     </table>
@@ -132,6 +132,9 @@
 function apiFetch(path, options) {
   return fetch(path, options);
 }
+
+const POLL_INTERVAL_MS = 1500;
+const POLL_TIMEOUT_MS = 60000;
 
 const SPOOF_LOCATIONS = ["New York", "London", "Tokyo", "Lagos", "Sydney"];
 const spoofSelect = document.getElementById("spoof");
@@ -148,12 +151,32 @@ const incidentsBody = document.getElementById("incidents-body");
 const form = document.getElementById("transfer-form");
 const submitBtn = document.getElementById("submit-btn");
 
+// Client-side incident log: this backend exposes workflow status, not a server-side incident feed,
+// so recent transfer attempts are tracked here in browser memory.
+const incidents = [];
+
 function fmtMoney(n) {
   return "$" + Number(n).toFixed(2);
 }
 
-function fmtTime(iso) {
-  return new Date(iso).toLocaleTimeString();
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString();
+}
+
+function renderIncidents() {
+  incidentsBody.innerHTML = "";
+  for (const inc of incidents.slice().reverse()) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${fmtTime(inc.at)}</td>
+      <td><code>${inc.workflow_id.slice(0, 13)}…</code></td>
+      <td>${inc.from_account} → ${inc.to_account}</td>
+      <td>${fmtMoney(inc.amount)}</td>
+      <td class="verdict-${inc.status.toLowerCase()}">${inc.status}</td>
+      <td>${inc.detail || ""}</td>
+    `;
+    incidentsBody.appendChild(row);
+  }
 }
 
 async function fetchAccount(id) {
@@ -189,34 +212,44 @@ async function refreshAccounts() {
   }
 }
 
-async function refreshIncidents() {
-  try {
-    const res = await apiFetch(`/incidents`);
-    if (!res.ok) throw new Error(`incidents fetch failed: ${res.status}`);
-    const incidents = await res.json();
-    incidentsBody.innerHTML = "";
-    for (const inc of incidents.slice().reverse()) {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${fmtTime(inc.at)}</td>
-        <td>${inc.from_account} → ${inc.to_account}</td>
-        <td>${fmtMoney(inc.amount)}</td>
-        <td>${inc.location ? inc.location.city + ", " + inc.location.country : "—"}</td>
-        <td class="verdict-${inc.verdict}">${inc.verdict}</td>
-        <td>${inc.reason || ""}</td>
-      `;
-      incidentsBody.appendChild(row);
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pollTransfer(workflowId, incidentRecord) {
+  const deadline = Date.now() + POLL_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const res = await apiFetch(`/transfer/${workflowId}`);
+    if (!res.ok) throw new Error(`status poll failed: ${res.status}`);
+    const data = await res.json();
+
+    if (data.status === "COMPLETED") {
+      incidentRecord.status = "COMPLETED";
+      incidentRecord.detail = "accepted";
+      renderIncidents();
+      return data;
     }
-  } catch (err) {
-    // Incident log is a nice-to-have; a failed poll shouldn't block the rest of the UI.
+    if (data.status === "FAILED") {
+      incidentRecord.status = "FAILED";
+      incidentRecord.detail = data.error || "declined or errored";
+      renderIncidents();
+      return data;
+    }
+    incidentRecord.status = data.status || "RUNNING";
+    renderIncidents();
+    await sleep(POLL_INTERVAL_MS);
   }
+  incidentRecord.status = "PENDING";
+  incidentRecord.detail = `still running after ${POLL_TIMEOUT_MS / 1000}s — gave up polling, workflow may still complete`;
+  renderIncidents();
+  return null;
 }
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   submitBtn.disabled = true;
-  statusEl.className = "";
-  statusEl.textContent = "Submitting transfer…";
+  statusEl.className = "pending";
+  statusEl.textContent = "Starting workflow…";
 
   const body = {
     from_account: document.getElementById("from").value,
@@ -226,18 +259,44 @@ form.addEventListener("submit", async (e) => {
   };
 
   try {
-    const res = await apiFetch(`/transfer`, {
+    const startRes = await apiFetch(`/transfer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    const startData = await startRes.json().catch(() => ({}));
+    if (!startRes.ok) {
       statusEl.className = "error";
-      statusEl.textContent = `Transfer failed (${res.status}): ${data.detail || "unknown error"}`;
-    } else {
+      statusEl.textContent = `Could not start transfer (${startRes.status}): ${startData.detail || "unknown error"}`;
+      return;
+    }
+
+    const workflowId = startData.workflow_id;
+    const incidentRecord = {
+      workflow_id: workflowId,
+      from_account: body.from_account,
+      to_account: body.to_account,
+      amount: body.amount,
+      status: "PENDING",
+      detail: "",
+      at: Date.now(),
+    };
+    incidents.push(incidentRecord);
+    renderIncidents();
+
+    statusEl.className = "pending";
+    statusEl.textContent = `Workflow ${workflowId} started, waiting for result…`;
+
+    const result = await pollTransfer(workflowId, incidentRecord);
+    if (result === null) {
+      statusEl.className = "error";
+      statusEl.textContent = `Gave up waiting on ${workflowId} after ${POLL_TIMEOUT_MS / 1000}s — check the Temporal UI, the workflow may still be running.`;
+    } else if (result.status === "COMPLETED") {
       statusEl.className = "ok";
-      statusEl.textContent = "Transfer accepted.";
+      statusEl.textContent = `Transfer accepted (workflow ${workflowId}).`;
+    } else {
+      statusEl.className = "error";
+      statusEl.textContent = `Transfer failed (workflow ${workflowId}): ${result.error || "unknown error"}`;
     }
   } catch (err) {
     statusEl.className = "error";
@@ -245,14 +304,11 @@ form.addEventListener("submit", async (e) => {
   } finally {
     submitBtn.disabled = false;
     refreshAccounts();
-    refreshIncidents();
   }
 });
 
 refreshAccounts();
-refreshIncidents();
 setInterval(refreshAccounts, 5000);
-setInterval(refreshIncidents, 5000);
 </script>
 </body>
 </html>

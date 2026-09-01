@@ -6,8 +6,8 @@ and [Temporal](https://temporal.io/) for durable execution.
 
 You are a fraud investigator at Ledger Bank. Two accounts, A and B, move money between each other
 while a fraudster keeps trying to drain them from spoofed locations around the world. Modules 1 and
-2 build up the agent. Module 3 hands you a working but fragile transfer service and asks you to make
-it durable without changing what it does.
+2 build up the agent. Module 3 ships a Temporal-based transfer service that's already almost
+correct - you fill in 3 narrow TODOs that each close a real durability gap.
 
 Available in Python and Java, side by side - see [Java version](#java-version) below.
 
@@ -16,7 +16,7 @@ Available in Python and Java, side by side - see [Java version](#java-version) b
 ```
 modules/01-durable-bank-assistant/   Module 1 (Python): exercise/ + solution/
 modules/02-durable-bank-tools/       Module 2 (Python): exercise/ + solution/
-hackathon/                           Module 3's starting point: a fragile transfer service
+hackathon/                           Module 3: already wired to Temporal, 3 TODOs left to fill in
 solution/                            Module 3's fully temporalized reference
 java/                                The same three lessons, in Java (each module has its own README)
 instruqt/                            The Instruqt track: challenges, sandbox Dockerfiles, scripts
@@ -28,7 +28,7 @@ instruqt/                            The Instruqt track: challenges, sandbox Doc
 |---|---|---|
 | [`modules/01-durable-bank-assistant`](modules/01-durable-bank-assistant/) | A bank assistant `Agent` inside a Temporal workflow. One LLM call, already durable, no tools yet. | [`modules/01-durable-bank-assistant/README.md`](modules/01-durable-bank-assistant/README.md) |
 | [`modules/02-durable-bank-tools`](modules/02-durable-bank-tools/) | A mock balance-lookup tool becomes a Temporal activity via `activity_as_tool`. | [`modules/02-durable-bank-tools/README.md`](modules/02-durable-bank-tools/README.md) |
-| [`hackathon/`](hackathon/) + [`instruqt/03-durable-banking-agent`](instruqt/03-durable-banking-agent/) | The open hackathon: temporalize a fragile fraud-checking transfer service without changing its product behavior. | [`instruqt/03-durable-banking-agent/assignment.md`](instruqt/03-durable-banking-agent/assignment.md) |
+| [`hackathon/`](hackathon/) | 3 narrow TODOs in an already-wired Temporal workflow: pacing, a non-retryable fraud decline, and an idempotent ledger update. | [`hackathon/README.md`](hackathon/README.md) |
 
 `solution/` holds the fully temporalized reference for module 3.
 

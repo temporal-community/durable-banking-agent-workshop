@@ -3,8 +3,7 @@ slug: durable-banking-agent
 id: 0wk095dad8nv
 type: challenge
 title: 'Module 3: Durable Banking Agent (Python)'
-teaser: Ledger Bank's fraud check is fragile. Temporalize it without changing what
-  it does.
+teaser: Ledger Bank's fraud check is fragile. Fill in 3 TODOs to make it durable.
 notes:
 - type: text
   contents: |-
@@ -14,33 +13,32 @@ notes:
     the request, compare it against where the account transacted last, and
     decide whether the travel implied is possible.
 
-    The decision is made by an agent, not an if/else. The backend making that
-    decision has no retries, no idempotency, and no memory of a crash.
+    The decision is made by an agent, not an if/else. The workflow that
+    orchestrates it is already written - but three small gaps mean it isn't
+    actually durable yet.
 - type: text
   contents: |-
     # Your job
 
-    Wrap the transfer in a Temporal workflow. Turn the geo-IP lookup, the
-    fraud-check agent call, and the ledger update into activities. Change
-    nothing a customer would notice.
+    Fill in 3 marked TODOs in `transfer_workflow.py`. Everything else -
+    the worker, the activities, the API - is already wired up.
 tabs:
-- id: akvr81yhw1gc
+- id: s1vqjp8uopga
+  title: Worker
+  type: terminal
+  hostname: workshop
+  workdir: /root/workshop/hackathon/backend
+- id: urcthteufc3r
   title: Backend
   type: terminal
   hostname: workshop
   workdir: /root/workshop/hackathon/backend
 - id: 64f3mooextj2
-  title: Hackathon Frontend
+  title: Frontend
   type: service
   hostname: workshop
   path: /
   port: 8000
-- id: j3zbcvhyhin7
-  title: Solution Frontend
-  type: service
-  hostname: workshop
-  path: /
-  port: 8001
 - id: yblr9woe1s6o
   title: Temporal UI
   type: service
@@ -67,118 +65,63 @@ enhanced_loading: null
 
 > [!NOTE]
 > **Your tabs.**
-> - [button label="Backend" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` here. The `--host 0.0.0.0` matters: uvicorn's default of `127.0.0.1` is invisible to the tab proxy and shows up there as a 572. This same process serves both the API and the transfer UI, so the Hackathon Frontend tab needs it running too.
-> - [button label="Hackathon Frontend" background="#444CE7"](tab-1) is the live transfer UI for the code you're changing: two accounts, a transfer form, and an incident log.
-> - [button label="Solution Frontend" background="#444CE7"](tab-2) is the same UI against the finished reference. It's live from the start, nothing to run.
-> - [button label="Temporal UI" background="#444CE7"](tab-3) is the event history once you have a workflow. The solution's workflows are already there.
+> - [button label="Worker" background="#444CE7"](tab-0) is your terminal, opened in `hackathon/backend`. Run `uv run python -m worker` here - it registers the workflow and activities on a task queue and stays up the whole time.
+> - [button label="Backend" background="#444CE7"](tab-1) is a second terminal, same directory. Run `uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload` here - the API, which also serves the frontend.
+> - [button label="Frontend" background="#444CE7"](tab-2) is the transfer UI: two accounts, a transfer form, and an incident log.
+> - [button label="Temporal UI" background="#444CE7"](tab-3) is the event history for every workflow you run.
 > - [button label="Network Control Panel" background="#444CE7"](tab-4) turns OpenAI and the geolocation service off, on demand.
 > - [button label="Editor" background="#444CE7"](tab-5) is `hackathon/`, the code you're changing.
->   `solution/` is on disk too (read it from this terminal if you're stuck), just not its own tab -
->   don't just copy it in. The point is building it.
+>   `solution/` is on disk too (read it from a terminal if you're stuck), just not its own tab -
+>   don't just copy it in. The point is filling in the 3 TODOs yourself.
 
 ## The Incident
 
 Ledger Bank has two accounts, A (New York, USD) and B (London, USD-equivalent for this workshop).
 Someone is trying to move money out of one of them from a location it has never transacted from
-before. Open the [button label="Hackathon Frontend" background="#444CE7"](tab-1) tab, pick a
-**spoof location** far from an account's usual city, and submit a transfer. Watch it get declined,
-and watch the incident log record it.
+before. Once your Worker and Backend terminals are both running, open the [button label="Frontend"
+background="#444CE7"](tab-2) tab, pick a **spoof location** far from an account's usual city, and
+submit a transfer. Watch it get declined, and watch the incident log record it.
 
 Now do a normal transfer between the two home cities. It goes through.
 
-Curious what this looks like once it's durable? The [button label="Solution Frontend"
-background="#444CE7"](tab-2) tab is the same product, already running against the finished
-`solution/` backend. Try the same spoofed transfer there.
+## What's Already Done, What's Still Fragile
 
-## Why This Is Fragile
+`hackathon/backend/` already has a `TransferWorkflow`, a `worker.py` that runs it, activities for
+the geo-IP lookup / fraud check / ledger update, and an API that starts the workflow instead of
+running everything inline. Read `transfer_workflow.py` - the orchestration is all there. But 3
+things are marked `# TODO`, and each one is a real durability gap, not busywork:
 
-Everything so far ran inside `hackathon/backend/main.py`, synchronously, in one process:
-
-1. Geolocate the request's IP via `ip-api.com`. No retry: a slow or dropped call is a 500.
-2. Compute the distance and elapsed time since the account's last transaction, and hand those facts
-   to a fraud-check `Agent`, which decides to approve or decline. Not an if/else, read
-   `fraud_check.py`.
-3. Update the ledger in memory, with no idempotency key and no transaction boundary.
-
-Kill the backend process mid-transfer (`Ctrl-C` in the [button label="Backend"
-background="#444CE7"](tab-0) terminal, or toggle a service off in the [button label="Network
-Control Panel" background="#444CE7"](tab-4) mid-request) and there is no way to know if the debit
-happened, the credit happened, both, or neither. Nothing recorded what was in flight.
+1. **No pacing before the fraud check.** Nothing gives you a guaranteed window to kill the worker
+   mid-transfer, so the crash-recovery demo below is a race against how fast the fraud-check call
+   returns.
+2. **A fraud decline retries forever.** As shipped, a decline raises a *retryable* error - open the
+   Temporal UI after a spoofed transfer and you'll see the activity stuck retrying, not failing
+   once. A genuine decline should be permanent.
+3. **The ledger update isn't idempotent.** The call to `apply_transfer_to_ledger` is missing its
+   idempotency key, so a resumed run has no way to tell "already applied" from "not yet applied."
+   As shipped, this fails loudly (a `TypeError`) rather than silently double-crediting - notice the
+   difference between a fragile gap that fails loudly and one that would fail silently if you got
+   the fix wrong.
 
 ## The Task
 
-Temporalize `hackathon/backend/` without changing the product:
+Open `hackathon/backend/transfer_workflow.py` and fill in the 3 TODOs:
 
-- Wrap the transfer in a Temporal workflow, started from the `POST /transfer` endpoint.
-- `hackathon/backend` has no worker process yet - a workflow only runs once something is polling
-  its task queue. Add one (`worker.py`, or however you name it) and run it alongside the API.
-- Turn the geo-IP lookup, the fraud-check agent call, and the ledger update into `@activity.defn`
-  activities. Build the fraud-check `Agent` inside the workflow with `activity_as_tool`-wrapped
-  tools, the same pattern as modules 1 and 2, not a plain-Python `Agent` outside Temporal.
-- Give the ledger-update activity an idempotency key (the workflow ID) so a resumed run can't
-  double-credit.
-- A genuine fraud decline is permanent: raise `ApplicationError(..., non_retryable=True)`. A flaky
-  geo-IP timeout is transient: let Temporal's default retry policy handle it, don't catch and
-  convert it.
-- Add a `workflow.sleep(...)` before the risky call, the same pacing trick from modules 1-2's
-  network-kill demo, so you get a guaranteed window to kill the worker mid-transfer instead of
-  racing the LLM's response time.
+1. Add `await workflow.sleep(...)` where marked, before the fraud-check call.
+2. On a fraud decline, raise `ApplicationError(..., non_retryable=True)` instead of the placeholder.
+3. Pass `workflow.info().workflow_id` as the idempotency key on the ledger-update activity call.
 
-`solution/` is the fully temporalized reference if you want to compare shapes: same idea, `POST
-/transfer` starts a workflow and returns a workflow ID instead of blocking, and the frontend polls
-for the result. `hackathon/` and `solution/` are not required to end up identical; they just have
-to behave the same way from the outside. `solution/` is already running the whole time on its own
-port, the [button label="Solution Frontend" background="#444CE7"](tab-2) tab is it, nothing to
-start. No frontend code to write either way - `hackathon/frontend/` already talks to a `POST
-/transfer` + poll-for-status API shape, whatever backend answers it.
+Run `uv run pytest` first - it's faster than the Temporal UI for checking your work. Two tests are
+red as shipped (one per TODO 2 and 3 - TODO 1 is a timing behavior, not something a unit test can
+assert on) and should go green once you've filled those in correctly.
 
-<details>
-<summary>Stuck on where to start? Click for the shape of a solution</summary>
-
-You don't have to end up with these exact files, but this is the shape `solution/backend/` uses -
-useful if you're new to Temporal and not sure what "turn it into activities" means in practice:
-
-- **`activities.py`** - plain `@activity.defn` functions: `geolocate_ip`, `get_account_for_transfer`,
-  `apply_transfer_to_ledger`. Each one wraps a single risky I/O call (an HTTP request, a ledger
-  read/write) that needs its own retry policy - that's the whole reason it's an activity and not
-  just a function call.
-- **`transfer_workflow.py`** - the `@workflow.defn` class. It orchestrates, in order: fetch both
-  accounts, geolocate the request, compute travel distance/time (plain deterministic code run
-  *inside* the workflow, not an activity - no I/O, so no need for one), run the fraud-check `Agent`,
-  then apply the ledger update. The fraud-check `Agent` itself is built here too, the same
-  `activity_as_tool` pattern as modules 1-2.
-- **`worker.py`** - registers the workflow and all the activities on one task queue, then polls it.
-  Runs in its own terminal for the whole challenge.
-- **`main.py`** - the FastAPI app. `POST /transfer` starts the workflow and returns a workflow ID
-  right away instead of blocking; a status endpoint lets the frontend poll for the result.
-
-You don't need to write `ledger_store.py` from scratch - the file-locking/idempotency logic in
-there isn't the lesson this challenge is teaching, so copying or closely following
-`solution/backend/ledger_store.py` is expected, not cheating.
-</details>
+`solution/backend/transfer_workflow.py` has the finished version if you want to compare shapes -
+same file, same TODOs filled in.
 
 If you want `check-workshop`'s automated checks to find your workflows, use the task queue
-`banking-transfer-tq` and workflow IDs prefixed `transfer-`. Not required. Without it, verify the
-checklist below by reading the Temporal UI yourself. The always-running solution preview uses its
-own separate task queue, so it never gets mistaken for your work.
-
-### Commands
-
-```bash
-# Backend. --host 0.0.0.0 matters: uvicorn's default of 127.0.0.1 is invisible to the tab
-# proxy and shows up there as a 572.
-cd hackathon/backend && uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-```bash
-# solution/backend, only if you want to run a second copy of it yourself to compare - the
-# one on the Solution Frontend tab (port 8001) is already running and needs nothing from you.
-# No --reload here: every transfer writes ledger.json in this same directory, and --reload
-# restarts the server on every write.
-cd solution/backend
-uv run python -m worker &
-uv run uvicorn main:app --host 0.0.0.0 --port 8000
-```
+`banking-transfer-tq` and workflow IDs prefixed `transfer-` (both already the default in the
+shipped `worker.py`/`main.py` - nothing to change). Not required either way; you can always verify
+the checklist below by reading the Temporal UI yourself.
 
 You don't need a real `OPENAI_API_KEY` to build and check most of this. A fake value like
 `sk-test-not-real` exercises the geo-IP lookup, the workflow, and every activity up through the
@@ -191,11 +134,11 @@ everything before it worked.
 You're done when all four of these hold. There's no leaderboard here, this is a checklist, not a
 score.
 
-1. **Resume, not restart.** Start a transfer, kill the worker process
-   (`pkill -9 -f "modules/hackathon\|hackathon/backend"` or however you've named it) during the
-   `workflow.sleep` window, restart the worker, and confirm in the [button label="Temporal UI"
-   background="#444CE7"](tab-3) tab that the same workflow ID resumes and finishes, with the
-   ledger showing neither a duplicated nor a lost transfer.
+1. **Resume, not restart.** Start a transfer, kill the worker process (`pkill -9 -f "python -m
+   worker"`) during the `workflow.sleep` window, restart it (`uv run python -m worker` in the
+   Worker tab), and confirm in the [button label="Temporal UI" background="#444CE7"](tab-3) tab
+   that the same workflow ID resumes and finishes, with the ledger showing neither a duplicated
+   nor a lost transfer.
 2. **Fraud declines don't retry.** A spoofed impossible-travel transfer shows exactly one failed
    attempt in event history, not a retrying activity.
 3. **Geo-IP failures do retry.** Toggle **Geolocation** off in the [button label="Network Control
@@ -220,19 +163,17 @@ them costs you nothing.
    workflow and watch it react via `temporal workflow signal`.
 3. **Cross-currency transfer.** Add a third account in a different currency and a conversion step
    in the transfer workflow.
-4. **Queryable audit trail.** `incidents` is just a list today. Expose it through a Temporal Query
-   instead of a REST endpoint, so the incident history comes from the workflow's own state, not a
-   side channel that can drift from it.
+4. **Queryable audit trail.** Expose the incident log through a Temporal Query instead of purely
+   client-side tracking, so the incident history comes from the workflow's own state.
 5. **Break your own retries on purpose.** Misconfigure the fraud-check activity's `RetryPolicy`
    (e.g. an aggressive `initial_interval` with no `maximum_attempts`) and watch what that does to
    the event history in the Temporal UI. Cheap to try, and the fastest way to feel why the default
    policy is a starting point, not a given.
 6. **Concurrent transfers.** Fire two simultaneous transfers from the same near-empty account. Does
-   your temporalized version still let the balance go negative? Temporal gives you crash recovery
-   and retries, but nothing about a workflow automatically serializes it against a *different*
-   workflow execution touching the same account - that's still on you. Look at how `solution/`'s
-   ledger-update activity re-validates the balance *inside* its lock, not just earlier in the
-   workflow, before it debits.
+   the balance still go negative? Temporal gives you crash recovery and retries, but nothing about
+   a workflow automatically serializes it against a *different* workflow execution touching the
+   same account - that's still on you. Look at how `ledger.py`'s ledger-update re-validates the
+   balance *inside* its lock, not just earlier in the workflow, before it debits.
 
 ## Limits of this sandbox
 
@@ -245,7 +186,7 @@ role-based approval flows aren't buildable as-is.
 
 ## Without Temporal
 
-The same crash, against the plain FastAPI backend you started with:
+The same crash, against a plain synchronous backend with none of this:
 
 ```python,nocopy
 sender["balance"] -= amount
@@ -253,13 +194,14 @@ accounts[to_account]["balance"] += amount
 ```
 
 If the process dies between those two lines, one account is down money and the other never
-received it, and nothing in the process remembers that a transfer was even in progress.
+received it, and nothing in the process remembers that a transfer was even in progress. That's
+exactly what the 3 TODOs above are closing off.
 
 ## Summary
 
-| | `hackathon/` before you start | `hackathon/` after |
+| | Unfilled TODOs | All 3 filled in |
 |---|---|---|
-| Geo-IP call retries on a timeout | No | Yes, by default |
-| A crashed process mid-transfer | Ledger inconsistent | Workflow resumes, ledger consistent |
-| Fraud decline behavior | Same both ways | Same both ways |
-| Idempotency on the ledger update | None | Keyed on workflow ID |
+| Geo-IP call retries on a timeout | Yes, already (not a TODO) | Yes |
+| A crashed process mid-transfer | Workflow resumes, but check the Temporal UI to be sure | Workflow resumes, ledger consistent |
+| Fraud decline behavior | Retries forever (wrong) | Fails once, permanently |
+| Idempotency on the ledger update | Fails loudly (`TypeError`) | Keyed on workflow ID |

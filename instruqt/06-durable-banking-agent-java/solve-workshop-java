@@ -1,14 +1,14 @@
 #!/bin/bash
 # Simulates a correctly-solved hackathon/backend for check-workshop's automated verification
 # (instruqt track test, or an explicit admin "solve" action) - never run by a real participant's
-# own exploration. Runs a second instance of solution/backend on the hackathon's own port 8000,
-# explicitly on the "banking-transfer-tq-java" convention a real solved hackathon/backend would
-# use. The always-on preview instance on port 8001 ("solution-preview-tq-java") is left running
-# untouched, since WorkerMain/ApiMain take PORT/TRANSFER_TASK_QUEUE overrides for exactly this.
+# own exploration. Runs solution/backend (the reference, all 3 TODOs already filled in) on the
+# hackathon's own port 8000, explicitly on the "banking-transfer-tq-java" convention hackathon/
+# backend's own shipped WorkerMain.java/ApiMain.java already default to.
 set -euxo pipefail
 source /root/.workshop-env || true
 
-pkill -f "exec:java.*bank.hackathon.Main" || true
+pkill -f "exec:java.*bank.hackathon.WorkerMain" || true
+pkill -f "exec:java.*bank.hackathon.ApiMain" || true
 sleep 1
 
 # solution/backend serves its own frontend at "/" now, so standing in on port 8000 covers both

@@ -7,7 +7,6 @@ containers:
   ports:
   - 5000
   - 8000
-  - 8001
   - 8233
 - name: workshop-java
   image: trainwithshubham/durable-banking-agent-workshop-java-sandbox:latest
@@ -16,7 +15,6 @@ containers:
   ports:
   - 5000
   - 8000
-  - 8001
   - 8233
 secrets:
 - name: TEMPORAL_LITELLM_BROKER_SECRET

@@ -1,76 +1,103 @@
-"""Tests that document known, INTENTIONAL fragility of hackathon/backend.
+"""Tests that document the fix to hackathon/backend's former fragility, now that it's
+Temporalized. The old version of this file exercised the plain synchronous FastAPI app - no
+retries, no idempotency, no locking - by hitting real races. That app no longer exists: the same
+behavior is now handled by Temporal's own retry policy and the ledger's workflow_id idempotency
+key. See tests/test_ledger.py (locking/idempotency at the store level), tests/test_activities.py
+(idempotency at the activity boundary) and tests/test_transfer_workflow.py (idempotency and
+non-retryable-decline behavior through the actual workflow) for the replacements.
 
-hackathon/backend is deliberately non-durable: no retries, in-memory state, no idempotency,
-no locking. These tests exist to demonstrate that fragility as a real, reproducible property of
-the design - not to flag bugs to fix here. `solution/backend`'s Temporal workflow is the fix.
+These tests deliberately don't run a transfer through to acceptance: that depends on
+transfer_workflow.py's TODOs being filled in, which is exactly what test_transfer_workflow.py's
+two dedicated tests check instead.
 """
 
 from __future__ import annotations
 
-import asyncio
+import threading
 
 import httpx
+import pytest
+from temporalio.exceptions import ApplicationError
 
-import main
-from fraud_check import FraudDecision
+import activities
 
 
-def test_geo_ip_failure_propagates_as_500_no_retry(client, mock_geo_failure, mock_fraud_approve):
-    """Intentional: main.py awaits geolocate_ip with no try/except and no retry policy. A flaky
-    or refusing geo-IP call just fails the whole request - this is the "no retry" half of the
-    workshop's pitch, working exactly as designed.
+class _FakeResponse:
+    def __init__(self, json_data):
+        self._json_data = json_data
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._json_data
+
+
+class _FakeAsyncClient:
+    def __init__(self, response):
+        self._response = response
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def get(self, url, timeout=None):
+        return self._response
+
+
+async def test_geo_ip_failure_is_a_plain_exception_not_a_non_retryable_one(monkeypatch):
+    """The old backend had no retry: a flaky or refusing geo-IP call just failed the whole
+    request. geolocate_ip's failures are plain exceptions (RuntimeError, httpx errors), never
+    ApplicationError(non_retryable=True) - so, unlike an unknown-account lookup, Temporal's
+    default activity retry policy applies to them automatically, with no special-casing needed in
+    transfer_workflow.py.
     """
-    res = client.post(
-        "/transfer",
-        json={"from_account": "A", "to_account": "B", "amount": 10, "spoof_location": "New York"},
-    )
-    assert res.status_code == 500
+    fake_data = {"status": "fail", "message": "private range", "query": "10.0.0.1"}
+    monkeypatch.setattr(httpx, "AsyncClient", lambda: _FakeAsyncClient(_FakeResponse(fake_data)))
 
-    # And because the failure happens before any balance mutation, at least the ledger itself
-    # isn't corrupted by this particular failure mode - only concurrent writes are (see below).
-    assert client.get("/accounts/A").json()["balance"] == 5000.0
+    with pytest.raises(RuntimeError, match="geolocation failed"):
+        await activities.geolocate_ip("10.0.0.1")
 
 
-async def test_concurrent_transfers_can_overdraw_the_ledger(monkeypatch):
-    """Demonstrates a known, intentional fragility: concurrent transfers can corrupt the
-    in-memory ledger because there is no locking around the read-check-write of
-    `sender["balance"]`. main.py checks `sender["balance"] < amount` long before it ever awaits
-    anything else, then writes the new balance only at the very end, after an `await
-    geolocate_ip(...)` and `await check_transfer_for_fraud(...)`. Two concurrent transfers that
-    are each individually affordable, but not affordable together, can both pass the balance
-    check before either has written back - a classic lost-update race. This is exactly the class
-    of bug the workshop's Temporal solution (a single idempotent, effectively-serialized
-    ledger-update activity) fixes; it is not a bug to patch in hackathon/backend.
-    """
+async def test_unknown_account_lookup_is_non_retryable_unlike_a_geo_failure(isolated_ledger):
+    """Contrast case: an unknown account is a permanent, not transient, problem - so
+    get_account_for_transfer wraps it as ApplicationError(non_retryable=True), which Temporal
+    will not retry, unlike the plain exception above."""
+    with pytest.raises(ApplicationError) as exc_info:
+        await activities.get_account_for_transfer("nonexistent")
+    assert exc_info.value.non_retryable is True
 
-    async def slow_geo(ip: str) -> dict:
-        # Forces both concurrent requests past their balance check and into the "in flight"
-        # window before either one resumes and writes its result back.
-        await asyncio.sleep(0.05)
-        return {"city": "Paris", "country": "France", "lat": 48.8566, "lon": 2.3522}
 
-    async def approve(**kwargs) -> FraudDecision:
-        return FraudDecision(approve=True, reason="ok")
+def test_concurrent_transfers_no_longer_overdraw_the_ledger(isolated_ledger):
+    """Regression test for the fixed version of a real race the old in-memory ledger had: two
+    concurrent transfers that are each individually affordable, but not affordable together,
+    used to both pass a balance check before either wrote back - a lost-update race. The
+    file-backed, flock-protected ledger re-validates the balance under its own lock, so only one
+    of two such transfers can succeed now."""
+    results = []
 
-    monkeypatch.setattr(main, "geolocate_ip", slow_geo)
-    monkeypatch.setattr(main, "check_transfer_for_fraud", approve)
+    def send(i: int) -> None:
+        try:
+            isolated_ledger.apply_transfer(
+                workflow_id=f"wf-{i}",
+                from_account="A",
+                to_account="B",
+                amount=3000.0,
+                new_location={"city": "Paris", "country": "France", "lat": 48.8566, "lon": 2.3522},
+                new_at="2026-01-02T00:00:00+00:00",
+            )
+            results.append("ok")
+        except ValueError:
+            results.append("rejected")
 
-    body = {"from_account": "A", "to_account": "B", "amount": 3000, "spoof_location": "New York"}
-    # Account A starts at $5000. Two $3000 transfers together exceed that, but each one alone is
-    # well within balance at the moment it's checked.
-    transport = httpx.ASGITransport(app=main.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as http_client:
-        responses = await asyncio.gather(
-            http_client.post("/transfer", json=body),
-            http_client.post("/transfer", json=body),
-        )
+    threads = [threading.Thread(target=send, args=(i,)) for i in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
 
-    assert [r.status_code for r in responses] == [200, 200], (
-        "both requests should have individually passed the balance check - that's the race"
-    )
-
-    final_balance = main.accounts["A"]["balance"]
-    assert final_balance < 0, (
-        f"expected the unlocked read-check-write race to overdraw account A, "
-        f"got balance={final_balance} instead"
-    )
+    # Account A starts at $5000. Two $3000 transfers together exceed that; exactly one must win.
+    assert sorted(results) == ["ok", "rejected"]
+    assert isolated_ledger.get_account("A")["balance"] == 2000.0

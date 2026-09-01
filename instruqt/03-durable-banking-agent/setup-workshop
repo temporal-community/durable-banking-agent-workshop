@@ -4,20 +4,11 @@ bash /opt/bootstrap-workshop.sh
 source /root/.bashrc || true
 
 pkill -f "uvicorn main:app --host 0.0.0.0 --port 8000" || true
-pkill -f "uvicorn main:app --host 0.0.0.0 --port 8001" || true
 pkill -f "python -m worker" || true
 sleep 1
 
-# The solution stack runs the whole time, on its own port, so the Solution tab is live from the
-# moment the challenge loads - nothing to start by hand. Each backend serves its own frontend at
-# "/" (same origin, no CORS/cookie dance needed), so there's no separate frontend process to start
-# either. Its worker uses the isolated "solution-preview-tq" default task queue (see worker.py),
-# so exploring it never touches the queue check-workshop looks for.
-cd /root/workshop/solution/backend
-nohup uv run python -m worker > /tmp/solution-preview-worker.log 2>&1 &
-sleep 5
-nohup uv run uvicorn main:app --host 0.0.0.0 --port 8001 > /tmp/solution-preview-backend.log 2>&1 &
-
-echo "==> 03-durable-banking-agent ready. The Solution tab is already live."
-echo "    Start your own backend from the Backend terminal:"
-echo "    cd /root/workshop/hackathon/backend && uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+echo "==> 03-durable-banking-agent ready. hackathon/backend ships already wired to Temporal,"
+echo "    with 3 TODOs left in transfer_workflow.py - see the assignment for what they are."
+echo "    Start it from two terminals:"
+echo "    Worker:  cd /root/workshop/hackathon/backend && uv run python -m worker"
+echo "    Backend: cd /root/workshop/hackathon/backend && uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload"

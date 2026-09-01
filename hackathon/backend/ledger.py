@@ -1,32 +1,114 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import contextlib
+import fcntl
+import json
+import os
+from pathlib import Path
 
-HOME_LOCATIONS = {
-    "A": {"city": "New York", "country": "United States", "lat": 40.7128, "lon": -74.0060},
-    "B": {"city": "London", "country": "United Kingdom", "lat": 51.5074, "lon": -0.1278},
+# Deliberately outside this project directory: uvicorn --reload watches the whole tree it runs
+# from, and a ledger.json here would trigger a restart on every transfer. A different filename
+# than solution/backend's own ledger, so the two never collide if both run in the same container.
+LEDGER_PATH = Path("/tmp/durable-banking-ledger-hackathon.json")
+LOCK_PATH = Path("/tmp/durable-banking-ledger-hackathon.lock")
+
+
+@contextlib.contextmanager
+def _locked():
+    # Temporal can run activities concurrently within one worker process, and this store is a
+    # single JSON file with no other concurrency control: without this lock, two concurrent
+    # apply_transfer calls can each read the same on-disk state before either writes back,
+    # silently losing one of the two updates. An advisory flock on a sidecar file serializes the
+    # read-modify-write section; this always runs in a single Linux container, so a plain fcntl
+    # lock (no cross-platform fallback) is sufficient.
+    LOCK_PATH.touch(exist_ok=True)
+    with open(LOCK_PATH, "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+
+DEFAULT_STATE = {
+    "accounts": {
+        "A": {
+            "balance": 5000.0,
+            "home_country": "United States",
+            "last_location": {"city": "New York", "country": "United States", "lat": 40.7128, "lon": -74.0060},
+            "last_transaction_at": "2026-01-01T00:00:00+00:00",
+        },
+        "B": {
+            "balance": 3000.0,
+            "home_country": "United Kingdom",
+            "last_location": {"city": "London", "country": "United Kingdom", "lat": 51.5074, "lon": -0.1278},
+            "last_transaction_at": "2026-01-01T00:00:00+00:00",
+        },
+    },
+    "applied_workflow_ids": [],
 }
 
-accounts: dict[str, dict] = {
-    "A": {
-        "balance": 5000.0,
-        "home_country": "United States",
-        "last_location": HOME_LOCATIONS["A"],
-        "last_transaction_at": datetime.now(timezone.utc),
-    },
-    "B": {
-        "balance": 3000.0,
-        "home_country": "United Kingdom",
-        "last_location": HOME_LOCATIONS["B"],
-        "last_transaction_at": datetime.now(timezone.utc),
-    },
-}
 
-incidents: list[dict] = []
-
-MAX_INCIDENTS = 20
+def _load() -> dict:
+    if not LEDGER_PATH.exists():
+        _save(DEFAULT_STATE)
+    return json.loads(LEDGER_PATH.read_text())
 
 
-def log_incident(entry: dict) -> None:
-    incidents.append(entry)
-    del incidents[:-MAX_INCIDENTS]
+def _save(state: dict) -> None:
+    # Written to a temp file and renamed into place, not written directly: a plain write_text()
+    # truncates the target file first, so killing the worker mid-write can leave a half-written,
+    # unparseable ledger that then fails every future read, not just the interrupted one.
+    # os.rename is atomic on the same filesystem, so a reader only ever sees the old file or the
+    # fully-written new one.
+    tmp_path = LEDGER_PATH.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(state, indent=2))
+    os.rename(tmp_path, LEDGER_PATH)
+
+
+def reset() -> None:
+    _save(DEFAULT_STATE)
+
+
+def get_account(account_id: str) -> dict:
+    with _locked():
+        return _load()["accounts"][account_id]
+
+
+def apply_transfer(
+    *, workflow_id: str, from_account: str, to_account: str, amount: float, new_location: dict, new_at: str
+) -> dict:
+    """Debit/credit the ledger, keyed on workflow_id so a resumed run can't double-apply."""
+    with _locked():
+        return _apply_transfer_locked(
+            workflow_id=workflow_id,
+            from_account=from_account,
+            to_account=to_account,
+            amount=amount,
+            new_location=new_location,
+            new_at=new_at,
+        )
+
+
+def _apply_transfer_locked(
+    *, workflow_id: str, from_account: str, to_account: str, amount: float, new_location: dict, new_at: str
+) -> dict:
+    state = _load()
+    if workflow_id in state["applied_workflow_ids"]:
+        return state["accounts"][from_account]
+
+    accounts = state["accounts"]
+    if from_account not in accounts or to_account not in accounts:
+        raise ValueError(f"unknown account: {from_account if from_account not in accounts else to_account}")
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+    if accounts[from_account]["balance"] < amount:
+        raise ValueError(f"insufficient funds in account {from_account}")
+
+    accounts[from_account]["balance"] -= amount
+    accounts[to_account]["balance"] += amount
+    accounts[from_account]["last_location"] = new_location
+    accounts[from_account]["last_transaction_at"] = new_at
+    state["applied_workflow_ids"].append(workflow_id)
+    _save(state)
+    return accounts[from_account]
